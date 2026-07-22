@@ -1,144 +1,186 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class InputManager : MonoBehaviour
 {
-    private LineRenderer lineRenderer;
+    [Header("References")]
+    public BoardManager boardManager;
+    public LineRenderer lineRenderer;
+
+    [Header("Color Palette")]
+    public Color[] jellyColors = new Color[]
+    {
+        new Color(0.2f, 0.6f, 1.0f, 1.0f), // Blue (Alpha = 1)
+        new Color(0.2f, 0.8f, 0.2f, 1.0f), // Green
+        new Color(1.0f, 0.5f, 0.0f, 1.0f), // Orange
+        new Color(0.6f, 0.2f, 0.8f, 1.0f), // Purple
+        new Color(0.0f, 0.8f, 0.8f, 1.0f)  // Cyan
+    };
+
+    [Header("Animation Settings")]
+    public float scrollSpeed = 2.0f;
+
     private List<Jelly> selectedJellies = new List<Jelly>();
-    private bool isSelecting = false;
-    private int currentColorIndex = -1;
-    private BoardManager boardManager;
+    private bool isDragging = false;
+    private Material lineMaterial;
 
     void Start()
     {
-        lineRenderer = GetComponent<LineRenderer>();
-        boardManager = FindObjectOfType<BoardManager>();
+        if (lineRenderer == null)
+        {
+            lineRenderer = GetComponent<LineRenderer>();
+        }
+
+        if (lineRenderer != null)
+        {
+            lineRenderer.positionCount = 0;
+            lineMaterial = lineRenderer.material;
+            
+            lineRenderer.sortingOrder = 20; 
+        }
     }
 
     void Update()
     {
-        // Board meşgulse girdi alma
         if (boardManager != null && boardManager.IsProcessing) return;
 
+        HandleInput();
+        AnimateLine();
+    }
+
+    void HandleInput()
+    {
         if (Input.GetMouseButtonDown(0))
         {
-            StartSelection();
+            Jelly startJelly = GetJellyUnderMouse();
+            if (startJelly != null)
+            {
+                isDragging = true;
+                SelectJelly(startJelly);
+                SetLineColor(startJelly.colorIndex);
+            }
         }
-
-        if (Input.GetMouseButton(0) && isSelecting)
+        else if (Input.GetMouseButton(0) && isDragging)
         {
-            UpdateSelection();
+            Jelly currentJelly = GetJellyUnderMouse();
+            if (currentJelly != null && !selectedJellies.Contains(currentJelly))
+            {
+                Jelly lastJelly = selectedJellies[selectedJellies.Count - 1];
+
+                if (currentJelly.colorIndex == lastJelly.colorIndex && IsNeighbor(lastJelly, currentJelly))
+                {
+                    SelectJelly(currentJelly);
+                }
+            }
+            
+            if (selectedJellies.Count > 0)
+            {
+                UpdateLinePositions();
+            }
         }
-
-        if (Input.GetMouseButtonUp(0))
+        else if (Input.GetMouseButtonUp(0) && isDragging)
         {
-            EndSelection();
+            isDragging = false;
+
+            if (selectedJellies.Count >= 3)
+            {
+                boardManager.ProcessMatches(new List<Jelly>(selectedJellies));
+            }
+
+            ClearSelection();
         }
     }
 
-    void StartSelection()
+    void SelectJelly(Jelly jelly)
     {
-        Jelly hitJelly = GetJellyUnderMouse();
+        selectedJellies.Add(jelly);
+        jelly.transform.localScale = Vector3.one * 0.2f; 
+    }
 
-        if (hitJelly != null)
+    void SetLineColor(int colorIndex)
+    {
+        if (lineRenderer == null) return;
+
+        Color targetColor = Color.white;
+        if (colorIndex >= 0 && colorIndex < jellyColors.Length)
         {
-            isSelecting = true;
-            selectedJellies.Clear();
-            currentColorIndex = hitJelly.colorIndex;
-            AddJellyToChain(hitJelly);
+            targetColor = jellyColors[colorIndex];
+        }
+
+        targetColor.a = 1.0f; 
+
+        lineRenderer.startColor = targetColor;
+        lineRenderer.endColor = targetColor;
+    }
+
+    void AnimateLine()
+    {
+        if (isDragging && lineMaterial != null && lineRenderer.positionCount > 0)
+        {
+            float offset = Time.time * scrollSpeed;
+            lineMaterial.mainTextureOffset = new Vector2(-offset, 0);
         }
     }
 
-    void UpdateSelection()
+    void UpdateLinePositions()
     {
-        Jelly hitJelly = GetJellyUnderMouse();
+        if (lineRenderer == null) return;
 
-        if (hitJelly != null && hitJelly.colorIndex == currentColorIndex)
+        int pointCount = selectedJellies.Count;
+        lineRenderer.positionCount = pointCount + 1;
+
+        for (int i = 0; i < pointCount; i++)
         {
-            // Undo (Delete the last one if reverting to the previous Jelly)
-            if (selectedJellies.Count > 1 && hitJelly == selectedJellies[selectedJellies.Count - 2])
-            {
-                selectedJellies.RemoveAt(selectedJellies.Count - 1);
-                UpdateLinePosition();
-            }
-            // Add Jelly, which is a neighbor and has not yet been selected
-            else if (!selectedJellies.Contains(hitJelly) && IsNeighbor(selectedJellies[selectedJellies.Count - 1], hitJelly))
-            {
-                AddJellyToChain(hitJelly);
-            }
+            Vector3 pos = selectedJellies[i].transform.position;
+            pos.z = -2f; // Z ekseninde öne aldık
+            lineRenderer.SetPosition(i, pos);
+        }
+
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouseWorldPos.z = -2f;
+        lineRenderer.SetPosition(pointCount, mouseWorldPos);
+    }
+
+    void ClearSelection()
+    {
+        foreach (var jelly in selectedJellies)
+        {
+            if (jelly != null)
+                jelly.transform.localScale = Vector3.one * 0.18f;
+        }
+
+        selectedJellies.Clear();
+        if (lineRenderer != null) 
+        {
+            lineRenderer.positionCount = 0;
         }
     }
 
     Jelly GetJellyUnderMouse()
     {
+        Camera mainCam = Camera.main;
+        if (mainCam == null) return null;
+
         Vector3 mousePos = Input.mousePosition;
-        mousePos.z = Mathf.Abs(Camera.main.transform.position.z);
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+        mousePos.z = Mathf.Abs(mainCam.transform.position.z);
+        Vector3 worldPos = mainCam.ScreenToWorldPoint(mousePos);
 
-        RaycastHit2D hit = Physics2D.Raycast(worldPos, Vector2.zero);
-
-        if (hit.collider != null && hit.collider.CompareTag("Jelly"))
+        Collider2D[] hits = Physics2D.OverlapCircleAll(worldPos, 0.35f);
+        foreach (var hit in hits)
         {
-            return hit.collider.GetComponent<Jelly>();
+            if (hit.CompareTag("Jelly"))
+            {
+                return hit.GetComponent<Jelly>();
+            }
         }
         return null;
     }
 
-    void AddJellyToChain(Jelly jelly)
+    bool IsNeighbor(Jelly a, Jelly b)
     {
-        selectedJellies.Add(jelly);
-        UpdateLinePosition();
-    }
-
-    void UpdateLinePosition()
-    {
-        if (selectedJellies.Count == 0)
-        {
-            lineRenderer.positionCount = 0;
-            return;
-        }
-
-        // The line passes only through the exact centers of the selected Jellies (no free ends)
-        lineRenderer.positionCount = selectedJellies.Count;
-
-        for (int i = 0; i < selectedJellies.Count; i++)
-        {
-            if (selectedJellies[i] != null)
-            {
-                Vector3 pos = selectedJellies[i].transform.position;
-                lineRenderer.SetPosition(i, new Vector3(pos.x, pos.y, -1f));
-            }
-        }
-    }
-
-    bool IsNeighbor(Jelly lastJelly, Jelly newJelly)
-    {
-        int xDiff = Mathf.Abs(lastJelly.x - newJelly.x);
-        int yDiff = Mathf.Abs(lastJelly.y - newJelly.y);
-
-        return (xDiff == 1 && yDiff == 0) || (xDiff == 0 && yDiff == 1);
-    }
-
-   void EndSelection()
-    {
-        lineRenderer.positionCount = 0;
-        isSelecting = false;
-
-        if (selectedJellies.Count >= 3)
-        {
-            // 1.Update Score and Combo
-            if (ScoreManager.Instance != null)
-            {
-                ScoreManager.Instance.AddScore(selectedJellies.Count);
-            }
-
-            // 2.Start the Blasting Operation
-            if (boardManager != null)
-            {
-                boardManager.ProcessMatches(new List<Jelly>(selectedJellies));
-            }
-        }
-
-        selectedJellies.Clear();
+        int dx = Mathf.Abs(a.x - b.x);
+        int dy = Mathf.Abs(a.y - b.y);
+        return (dx <= 1 && dy <= 1) && !(dx == 0 && dy == 0);
     }
 }

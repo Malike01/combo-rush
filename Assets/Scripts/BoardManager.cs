@@ -4,60 +4,133 @@ using UnityEngine;
 
 public class BoardManager : MonoBehaviour
 {
+    [Header("Board Settings")]
     public int width = 6;
     public int height = 8;
+    public float spacing = 1.2f;
+
+    [Header("References")]
     public GameObject jellyPrefab;
-    public Color[] jellyColors;
+    public Sprite[] jellySprites;
 
-    public Jelly[,] grid;
+    [Header("Grid Visuals")]
+    public GameObject cellPrefab;  // Background cell prefab assigned from Inspector
+    public GameObject boardBackgroundPrefab;  // Background prefab assigned from Inspector
+    public Transform gridParent;   // Parent object to keep the Hierarchy clean
 
+    [Header("Jelly Theme Palette")]
+    // Two soft pastel colors for the checkerboard background effect
+    public Color lightCellColor = new Color(1f, 1f, 1f, 0.25f);
+    public Color darkCellColor  = new Color(1f, 1f, 1f, 0.12f);
+
+    private Jelly[,] board;
     public bool IsProcessing { get; private set; } = false;
-
-    // The amount of shift calculated to center the grid exactly
-    private Vector2 boardOffset;
 
     void Start()
     {
-        // Offset calculation to align the center of a 6x8 grid with the (0,0) world coordinate
-        boardOffset = new Vector2((width - 1) / 2f, (height - 1) / 2f);
-        
-        grid = new Jelly[width, height];
-        GenerateBoard();
-    }
+        if (jellyPrefab == null || jellySprites == null || jellySprites.Length == 0)
+        {
+            Debug.LogError("BoardManager: Missing Prefab or Sprite array!");
+            return;
+        }
 
-    // A helpful method that converts grid coordinates (x,y) to Earth position
-    public Vector2 GetWorldPosition(int x, int y)
-    {
-        return new Vector2(x - boardOffset.x, y - boardOffset.y);
+        board = new Jelly[width, height];
+        GenerateBoard();
     }
 
     void GenerateBoard()
     {
+        CreateBoardBackground();    
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                SpawnJellyAt(x, y);
+                Vector2 pos = GetWorldPosition(x, y);
+
+                // 1. Create Background Grid Cell
+                if (cellPrefab != null)
+                {
+                    Vector3 bgPos = new Vector3(pos.x, pos.y, 0.1f);
+                    GameObject cell = Instantiate(cellPrefab, bgPos, Quaternion.identity, gridParent);
+                    cell.name = $"Cell_{x}_{y}";
+
+                    cell.transform.localScale = new Vector3(1.15f, 1.15f, 1f);
+
+                    // Checkerboard Styling & Layer Sorting
+                    SpriteRenderer cellSR = cell.GetComponent<SpriteRenderer>();
+                    if (cellSR != null)
+                    {
+                        bool isEven = (x + y) % 2 == 0;
+                        cellSR.color = isEven ? lightCellColor : darkCellColor;
+                        
+                        cellSR.sortingOrder = 0; 
+                    }
+                }
+
+                SpawnJellyAt(x, y, new Vector3(pos.x, pos.y, -1f));
             }
         }
     }
 
-    void SpawnJellyAt(int x, int y)
+    void CreateBoardBackground()
     {
-        Vector2 position = GetWorldPosition(x, y);
-        GameObject newJellyObj = Instantiate(jellyPrefab, position, Quaternion.identity, transform);
-        newJellyObj.name = $"Jelly ({x},{y})";
+      if (boardBackgroundPrefab == null) return;
 
-        Jelly jellyScript = newJellyObj.GetComponent<Jelly>();
-        int randomColorIndex = Random.Range(0, jellyColors.Length);
-        
-        jellyScript.Setup(x, y, randomColorIndex, jellyColors[randomColorIndex]);
-        grid[x, y] = jellyScript;
+        Vector3 centerPos = GetWorldPosition((width - 1) / 2f, (height - 1) / 2f);
+
+        float paddingX = 0.8f; 
+        float paddingY = 0.8f; 
+
+        float totalWidth = (52 * spacing) + paddingX;
+        float totalHeight = (62 * spacing) + paddingY;
+
+        // We are creating the panel (at the very back, with Z = 0.5f)
+        Vector3 bgPos = new Vector3(centerPos.x, centerPos.y, 0.5f);
+        GameObject bgObj = Instantiate(boardBackgroundPrefab, bgPos, Quaternion.identity, gridParent);
+        bgObj.name = "Board_Main_Background";
+        bgObj.transform.localScale = new Vector3(totalWidth, totalHeight, 1f);
+
+        SpriteRenderer sr = bgObj.GetComponent<SpriteRenderer>();
+        if (sr != null)
+        {
+            sr.color = new Color(0.08f, 0.09f, 0.22f, 0.65f); 
+            sr.sortingOrder = -5;
+        }
     }
 
+    // Converts grid coordinates to world space position
+    public Vector3 GetWorldPosition(float x, float y)
+    {
+        // Local merkez hesabı
+        float localX = -((width - 1) * spacing) / 2f + (x * spacing);
+        float localY = -((height - 1) * spacing) / 2f + (y * spacing);
+
+        // We add GridParent's world position to it
+        Vector3 parentPos = gridParent != null ? gridParent.position : Vector3.zero;
+
+        return new Vector3(localX + parentPos.x, localY + parentPos.y, 0f);
+    }
+
+    void SpawnJellyAt(int x, int y, Vector3 spawnPos)
+    {
+        int randomIndex = Random.Range(0, jellySprites.Length);
+
+        GameObject jellyObj = Instantiate(jellyPrefab, spawnPos, Quaternion.identity, transform);
+        jellyObj.name = $"Jelly ({x},{y})";
+
+        Jelly jellyScript = jellyObj.GetComponent<Jelly>();
+        if (jellyScript != null)
+        {
+            jellyScript.x = x;
+            jellyScript.y = y;
+            jellyScript.SetSprite(jellySprites[randomIndex], randomIndex);
+            board[x, y] = jellyScript;
+        }
+    }
+
+    // Match/explosion trigger called from InputManager
     public void ProcessMatches(List<Jelly> matchedJellies)
     {
-        if (IsProcessing) return;
         StartCoroutine(ProcessMatchesRoutine(matchedJellies));
     }
 
@@ -65,100 +138,113 @@ public class BoardManager : MonoBehaviour
     {
         IsProcessing = true;
 
-        foreach (Jelly jelly in matchedJellies)
+        // Add score if ScoreManager instance is active
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.AddScore(matchedJellies.Count);
+        }
+
+        // 1. Clear matched jellies
+        foreach (var jelly in matchedJellies)
         {
             if (jelly != null)
             {
-                grid[jelly.x, jelly.y] = null;
+                board[jelly.x, jelly.y] = null;
                 Destroy(jelly.gameObject);
             }
         }
 
         yield return new WaitForSeconds(0.15f);
 
-        yield return StartCoroutine(CollapseColumns());
-        yield return StartCoroutine(RefillBoard());
+        // 2. Drop existing jellies down
+        yield return StartCoroutine(CollapseGridRoutine());
+
+        // 3. Refill the empty spaces
+        yield return StartCoroutine(RefillGridRoutine());
 
         IsProcessing = false;
     }
 
-    private IEnumerator CollapseColumns()
+    private IEnumerator CollapseGridRoutine()
     {
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                if (grid[x, y] == null)
+                // If the current cell is empty, search for the first occupied cell above it
+                if (board[x, y] == null)
                 {
                     for (int aboveY = y + 1; aboveY < height; aboveY++)
                     {
-                        if (grid[x, aboveY] != null)
+                        if (board[x, aboveY] != null)
                         {
-                            Jelly fallingJelly = grid[x, aboveY];
-                            grid[x, y] = fallingJelly;
-                            grid[x, aboveY] = null;
+                            // Shift the jelly down
+                            Jelly movingJelly = board[x, aboveY];
+                            board[x, y] = movingJelly;
+                            board[x, aboveY] = null;
 
-                            fallingJelly.x = x;
-                            fallingJelly.y = y;
-                            fallingJelly.gameObject.name = $"Jelly ({x},{y})";
+                            movingJelly.x = x;
+                            movingJelly.y = y;
+                            movingJelly.transform.name = $"Jelly ({x},{y})";
 
-                            StartCoroutine(MoveJellyToPosition(fallingJelly, GetWorldPosition(x, y)));
+                            // Smooth downward movement maintaining Z-depth
+                            Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
+                            StartCoroutine(SmoothMove(movingJelly.transform, targetPos, 0.15f));
                             break;
                         }
                     }
                 }
             }
         }
-        yield return new WaitForSeconds(0.25f);
+        yield return new WaitForSeconds(0.18f);
     }
 
-    private IEnumerator RefillBoard()
+    private IEnumerator RefillGridRoutine()
     {
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                if (grid[x, y] == null)
+                if (board[x, y] == null)
                 {
-                    Vector2 targetWorldPos = GetWorldPosition(x, y);
-                    Vector2 spawnPos = new Vector2(targetWorldPos.x, targetWorldPos.y + 5f); // Drop off screen
+                    // Spawn above the board boundary
+                    Vector3 spawnAbovePos = new Vector3(GetWorldPosition(x, height).x, GetWorldPosition(x, height).y, -1f); 
+                    Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
 
-                    GameObject newJellyObj = Instantiate(jellyPrefab, spawnPos, Quaternion.identity, transform);
-                    
-                    Jelly jellyScript = newJellyObj.GetComponent<Jelly>();
-                    int randomColorIndex = Random.Range(0, jellyColors.Length);
-                    jellyScript.Setup(x, y, randomColorIndex, jellyColors[randomColorIndex]);
-                    newJellyObj.name = $"Jelly ({x},{y})";
+                    int randomIndex = Random.Range(0, jellySprites.Length);
+                    GameObject jellyObj = Instantiate(jellyPrefab, spawnAbovePos, Quaternion.identity, transform);
+                    jellyObj.name = $"Jelly ({x},{y})";
 
-                    grid[x, y] = jellyScript;
-                    
-                    StartCoroutine(MoveJellyToPosition(jellyScript, targetWorldPos));
+                    Jelly jellyScript = jellyObj.GetComponent<Jelly>();
+                    if (jellyScript != null)
+                    {
+                        jellyScript.x = x;
+                        jellyScript.y = y;
+                        jellyScript.SetSprite(jellySprites[randomIndex], randomIndex);
+                        board[x, y] = jellyScript;
+
+                        // Animate falling into target position
+                        StartCoroutine(SmoothMove(jellyObj.transform, targetPos, 0.2f));
+                    }
                 }
             }
         }
-        yield return new WaitForSeconds(0.25f);
+        yield return new WaitForSeconds(0.2f);
     }
 
-    private IEnumerator MoveJellyToPosition(Jelly jelly, Vector2 targetPos)
+    private IEnumerator SmoothMove(Transform target, Vector3 endPos, float duration)
     {
-        if (jelly == null) yield break;
+        Vector3 startPos = target.position;
+        float elapsed = 0f;
 
-        float elapsedTime = 0f;
-        float duration = 0.2f;
-        Vector2 startPos = jelly.transform.position;
-
-        while (elapsedTime < duration)
+        while (elapsed < duration)
         {
-            if (jelly == null) yield break;
-
-            jelly.transform.position = Vector2.Lerp(startPos, targetPos, elapsedTime / duration);
-            elapsedTime += Time.deltaTime;
+            if (target == null) yield break;
+            target.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
+            elapsed += Time.deltaTime;
             yield return null;
         }
 
-        if (jelly != null)
-        {
-            jelly.transform.position = targetPos;
-        }
+        if (target != null) target.position = endPos;
     }
 }

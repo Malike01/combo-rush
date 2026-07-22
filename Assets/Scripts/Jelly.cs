@@ -10,21 +10,15 @@ public class Jelly : MonoBehaviour
 
     private void Awake()
     {
-        // We get the SpriteRenderer component from the object
         spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
-    public void Setup(int newX, int newY, int newColorIndex, Color newColor)
+    // BoardManager sets Jelly's image by calling this method
+    public void SetSprite(Sprite newSprite, int index)
     {
-        x = newX;
-        y = newY;
-        colorIndex = newColorIndex;
-
-        // We secure the component if Awake hasn't been triggered yet
-        if (spriteRenderer == null)
-            spriteRenderer = GetComponent<SpriteRenderer>();
-
-        // THIS IS WHERE THE COLOR CHANGE TAKES PLACE
-        spriteRenderer.color = newColor; 
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+        
+        spriteRenderer.sprite = newSprite;
+        colorIndex = index;
     }
 }
