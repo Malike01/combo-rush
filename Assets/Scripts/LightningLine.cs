@@ -8,12 +8,12 @@ public class LightningLine : MonoBehaviour
     private LineRenderer lineRenderer;
 
     [Header("Şimşek Akış Ayarları")]
-    [SerializeField] private int pointsCount = 12;      // Çizgi üzerindeki detay noktası sayısı
-    [SerializeField] private float jitterAmount = 0.15f; // Titreşim/Sapma miktarı
-    [SerializeField] private float pulseSpeed = 25f;    // Dalgalanma hızı
+    [SerializeField] private int pointsCount = 12;       // Number of line detail points
+    [SerializeField] private float jitterAmount = 0.15f;  // Vibration/Deviation amount
+    [SerializeField] private float pulseSpeed = 25f;     // Pulse speed
 
     [Header("Görsel Kalınlık")]
-    [SerializeField] private float startWidth = 0.25f;
+    [SerializeField] private float startWidth = 0.22f;
     [SerializeField] private float endWidth = 0.15f;
 
     private Vector3 startPos;
@@ -35,7 +35,7 @@ public class LightningLine : MonoBehaviour
         currentColor = color;
         isActive = true;
 
-        // Renk ayarları (Glow/Additive materyal ile muazzam parlar)
+        // Color and width settings for the line renderer
         lineRenderer.startColor = color;
         lineRenderer.endColor = color;
 
@@ -54,7 +54,6 @@ public class LightningLine : MonoBehaviour
     {
         lineRenderer.positionCount = pointsCount;
         Vector3 dir = endPos - startPos;
-        float distance = dir.magnitude;
         Vector3 normal = new Vector3(-dir.y, dir.x, 0).normalized;
 
         lineRenderer.SetPosition(0, startPos);
@@ -64,10 +63,8 @@ public class LightningLine : MonoBehaviour
             float t = (float)i / (pointsCount - 1);
             Vector3 basePoint = Vector3.Lerp(startPos, endPos, t);
 
-            // Perlin Noise ile akıcı ve doğal dalgalanan elektrik akımı
             float noise = (Mathf.PerlinNoise(Time.time * pulseSpeed, t * 10f) - 0.5f) * 2f;
             
-            // Merkezde daha çok bükülsün, uçlarda sabit kalsın (Envelope)
             float envelope = Mathf.Sin(t * Mathf.PI); 
 
             Vector3 offset = normal * noise * jitterAmount * envelope;

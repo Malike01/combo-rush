@@ -7,16 +7,16 @@ public class InputManager : MonoBehaviour
     [Header("References")]
     public BoardManager boardManager;
     public LineRenderer lineRenderer;
-    public LightningLine lightningLine; // Şimşek efekti referansı
+    public LightningLine lightningLine;
 
     [Header("Color Palette")]
     public Color[] jellyColors = new Color[]
     {
-        new Color(0.2f, 0.6f, 1.0f, 1.0f), // Blue
-        new Color(0.2f, 0.8f, 0.2f, 1.0f), // Green
-        new Color(1.0f, 0.5f, 0.0f, 1.0f), // Orange
-        new Color(0.6f, 0.2f, 0.8f, 1.0f), // Purple
-        new Color(0.0f, 0.8f, 0.8f, 1.0f)  // Cyan
+        new Color(0.2f, 0.6f, 1.0f, 1.0f), 
+        new Color(0.2f, 0.8f, 0.2f, 1.0f), 
+        new Color(1.0f, 0.5f, 0.0f, 1.0f), 
+        new Color(0.6f, 0.2f, 0.8f, 1.0f), 
+        new Color(0.0f, 0.8f, 0.8f, 1.0f)  
     };
 
     [Header("Animation Settings")]
@@ -90,19 +90,21 @@ public class InputManager : MonoBehaviour
 
             if (selectedJellies.Count >= 3)
             {
-                boardManager.ProcessMatches(new List<Jelly>(selectedJellies));
+                StartCoroutine(ProcessMergeSequence(new List<Jelly>(selectedJellies)));
             }
-
-            ClearSelection();
+            else
+            {
+                ClearSelection();
+            }
         }
     }
 
     void SelectJelly(Jelly jelly)
     {
         selectedJellies.Add(jelly);
-        jelly.transform.localScale = Vector3.one * 0.2f; 
+        
+        jelly.SelectSquish();
 
-        // Eğer en az 2 Jelly bağlandıysa şimşek efektini çalıştır
         if (selectedJellies.Count >= 2)
         {
             Jelly previousJelly = selectedJellies[selectedJellies.Count - 2];
@@ -112,22 +114,37 @@ public class InputManager : MonoBehaviour
 
     void OnJellyConnected(Jelly currentJelly, Jelly targetJelly)
     {
-        // 1. Jelly'nin rengini paletteki listeden veya SpriteRenderer'dan al
         Color jellyColor = Color.white;
         if (currentJelly.colorIndex >= 0 && currentJelly.colorIndex < jellyColors.Length)
         {
             jellyColor = jellyColors[currentJelly.colorIndex];
         }
 
-        // 2. Şimşeği iki Jelly arasında oluştur
         if (lightningLine != null)
         {
             lightningLine.SetupLightning(currentJelly.transform.position, targetJelly.transform.position, jellyColor);
         }
 
-        // 3. İki Jelly'ye de elektrik şoku titreşimi ver
-        StartCoroutine(currentJelly.ShakeJelly());
         StartCoroutine(targetJelly.ShakeJelly());
+    }
+
+    private IEnumerator ProcessMergeSequence(List<Jelly> jelliesToMerge)
+    {
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+        if (lightningLine != null) lightningLine.ClearLightning();
+
+        Vector3 mergeCenter = jelliesToMerge[jelliesToMerge.Count - 1].transform.position;
+
+        for (int i = 0; i < jelliesToMerge.Count; i++)
+        {
+            float delay = i * 0.03f; 
+            StartCoroutine(jelliesToMerge[i].AnimateMergeTo(mergeCenter, delay));
+        }
+
+        yield return new WaitForSeconds((jelliesToMerge.Count * 0.03f) + 0.18f);
+
+        boardManager.ProcessMatches(jelliesToMerge);
+        selectedJellies.Clear();
     }
 
     void SetLineColor(int colorIndex)
@@ -179,20 +196,15 @@ public class InputManager : MonoBehaviour
         foreach (var jelly in selectedJellies)
         {
             if (jelly != null)
-                jelly.transform.localScale = Vector3.one * 0.18f;
+            {
+                jelly.ResetShape();
+            }
         }
 
         selectedJellies.Clear();
 
-        if (lineRenderer != null) 
-        {
-            lineRenderer.positionCount = 0;
-        }
-
-        if (lightningLine != null)
-        {
-            lightningLine.ClearLightning();
-        }
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+        if (lightningLine != null) lightningLine.ClearLightning();
     }
 
     Jelly GetJellyUnderMouse()

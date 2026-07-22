@@ -131,6 +131,16 @@ public class BoardManager : MonoBehaviour
     // Match/explosion trigger called from InputManager
     public void ProcessMatches(List<Jelly> matchedJellies)
     {
+       if (matchedJellies == null || matchedJellies.Count == 0) return;
+
+        Vector3 burstPoint = matchedJellies[matchedJellies.Count - 1].transform.position;
+        Color burstColor = matchedJellies[0].GetComponent<SpriteRenderer>().color;
+
+        // Play burst particle effect and camera shake if ParticleFXManager is available
+        if (ParticleFXManager.Instance != null)
+        {
+            ParticleFXManager.Instance.PlayBurst(burstPoint, burstColor, matchedJellies.Count);
+        }
         StartCoroutine(ProcessMatchesRoutine(matchedJellies));
     }
 
