@@ -7,7 +7,6 @@ public class InputManager : MonoBehaviour
     [Header("References")]
     public BoardManager boardManager;
     public LineRenderer lineRenderer;
-    public LightningLine lightningLine;
 
     [Header("Color Palette")]
     public Color[] jellyColors = new Color[]
@@ -19,12 +18,18 @@ public class InputManager : MonoBehaviour
         new Color(0.0f, 0.8f, 0.8f, 1.0f)  
     };
 
-    [Header("Animation Settings")]
-    public float scrollSpeed = 2.0f;
+    [Header("Line Visuals")]
+    public float lineWidth = 0.2f;
+
+    [Header("Idle / Hover Settings")]
+    public float hoverTimeThreshold = 5.0f; // Time required to trigger synchronized wiggle
 
     private List<Jelly> selectedJellies = new List<Jelly>();
     private bool isDragging = false;
-    private Material lineMaterial;
+
+    // Hover Tracking Variables
+    private Jelly hoveredJelly = null;
+    private float hoverTimer = 0f;
 
     void Start()
     {
@@ -36,13 +41,9 @@ public class InputManager : MonoBehaviour
         if (lineRenderer != null)
         {
             lineRenderer.positionCount = 0;
-            lineMaterial = lineRenderer.material;
-            lineRenderer.sortingOrder = 20; 
-        }
-
-        if (lightningLine == null)
-        {
-            lightningLine = GetComponent<LightningLine>();
+            lineRenderer.startWidth = lineWidth;
+            lineRenderer.endWidth = lineWidth;
+            lineRenderer.sortingOrder = 50;
         }
     }
 
@@ -51,7 +52,72 @@ public class InputManager : MonoBehaviour
         if (boardManager != null && boardManager.IsProcessing) return;
 
         HandleInput();
-        AnimateLine();
+        HandleHoverDetection();
+    }
+
+    // --- SYNCHRONIZED IDLE WIGGLE DETECTION ---
+    void HandleHoverDetection()
+    {
+        Jelly currentJelly = GetJellyUnderMouse();
+
+        if (currentJelly != null)
+        {
+            // Track if cursor stays on the same target jelly
+            if (currentJelly == hoveredJelly)
+            {
+                hoverTimer += Time.deltaTime;
+
+                if (hoverTimer >= hoverTimeThreshold)
+                {
+                    // IF a combo selection exists, wiggle ALL selected jellies together
+                    if (selectedJellies.Count > 0)
+                    {
+                        foreach (var jelly in selectedJellies)
+                        {
+                            if (jelly != null)
+                            {
+                                jelly.StartIdleWiggle();
+                            }
+                        }
+                    }
+                    // ELSE wiggle only the single hovered jelly
+                    else
+                    {
+                        currentJelly.StartIdleWiggle();
+                    }
+
+                    hoverTimer = 0f; // Reset timer for continuous breathing loop
+                }
+            }
+            else
+            {
+                ResetHoverTimer();
+                hoveredJelly = currentJelly;
+            }
+        }
+        else
+        {
+            ResetHoverTimer();
+        }
+    }
+
+    void ResetHoverTimer()
+    {
+        // Stop wiggle on active selection or single hovered target
+        if (selectedJellies.Count > 0)
+        {
+            foreach (var jelly in selectedJellies)
+            {
+                if (jelly != null) jelly.StopIdleWiggle();
+            }
+        }
+        else if (hoveredJelly != null)
+        {
+            hoveredJelly.StopIdleWiggle();
+        }
+
+        hoveredJelly = null;
+        hoverTimer = 0f;
     }
 
     void HandleInput()
@@ -69,6 +135,7 @@ public class InputManager : MonoBehaviour
         else if (Input.GetMouseButton(0) && isDragging)
         {
             Jelly currentJelly = GetJellyUnderMouse();
+            
             if (currentJelly != null && !selectedJellies.Contains(currentJelly))
             {
                 Jelly lastJelly = selectedJellies[selectedJellies.Count - 1];
@@ -78,15 +145,16 @@ public class InputManager : MonoBehaviour
                     SelectJelly(currentJelly);
                 }
             }
-            
+
             if (selectedJellies.Count > 0)
             {
-                UpdateLinePositions();
+                UpdateFullLinePositions();
             }
         }
         else if (Input.GetMouseButtonUp(0) && isDragging)
         {
             isDragging = false;
+            ResetHoverTimer();
 
             if (selectedJellies.Count >= 3)
             {
@@ -102,36 +170,32 @@ public class InputManager : MonoBehaviour
     void SelectJelly(Jelly jelly)
     {
         selectedJellies.Add(jelly);
-        
         jelly.SelectSquish();
-
-        if (selectedJellies.Count >= 2)
-        {
-            Jelly previousJelly = selectedJellies[selectedJellies.Count - 2];
-            OnJellyConnected(previousJelly, jelly);
-        }
+        StartCoroutine(jelly.ShakeJelly(0.08f, 0.03f));
     }
 
-    void OnJellyConnected(Jelly currentJelly, Jelly targetJelly)
+    void UpdateFullLinePositions()
     {
-        Color jellyColor = Color.white;
-        if (currentJelly.colorIndex >= 0 && currentJelly.colorIndex < jellyColors.Length)
+        if (lineRenderer == null) return;
+
+        int pointCount = selectedJellies.Count;
+        lineRenderer.positionCount = pointCount + 1;
+
+        for (int i = 0; i < pointCount; i++)
         {
-            jellyColor = jellyColors[currentJelly.colorIndex];
+            Vector3 pos = selectedJellies[i].transform.position;
+            pos.z = -2f;
+            lineRenderer.SetPosition(i, pos);
         }
 
-        if (lightningLine != null)
-        {
-            lightningLine.SetupLightning(currentJelly.transform.position, targetJelly.transform.position, jellyColor);
-        }
-
-        StartCoroutine(targetJelly.ShakeJelly());
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouseWorldPos.z = -2f;
+        lineRenderer.SetPosition(pointCount, mouseWorldPos);
     }
 
     private IEnumerator ProcessMergeSequence(List<Jelly> jelliesToMerge)
     {
         if (lineRenderer != null) lineRenderer.positionCount = 0;
-        if (lightningLine != null) lightningLine.ClearLightning();
 
         Vector3 mergeCenter = jelliesToMerge[jelliesToMerge.Count - 1].transform.position;
 
@@ -157,38 +221,8 @@ public class InputManager : MonoBehaviour
             targetColor = jellyColors[colorIndex];
         }
 
-        targetColor.a = 1.0f; 
-
         lineRenderer.startColor = targetColor;
         lineRenderer.endColor = targetColor;
-    }
-
-    void AnimateLine()
-    {
-        if (isDragging && lineMaterial != null && lineRenderer.positionCount > 0)
-        {
-            float offset = Time.time * scrollSpeed;
-            lineMaterial.mainTextureOffset = new Vector2(-offset, 0);
-        }
-    }
-
-    void UpdateLinePositions()
-    {
-        if (lineRenderer == null) return;
-
-        int pointCount = selectedJellies.Count;
-        lineRenderer.positionCount = pointCount + 1;
-
-        for (int i = 0; i < pointCount; i++)
-        {
-            Vector3 pos = selectedJellies[i].transform.position;
-            pos.z = -2f; 
-            lineRenderer.SetPosition(i, pos);
-        }
-
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = -2f;
-        lineRenderer.SetPosition(pointCount, mouseWorldPos);
     }
 
     void ClearSelection()
@@ -204,7 +238,6 @@ public class InputManager : MonoBehaviour
         selectedJellies.Clear();
 
         if (lineRenderer != null) lineRenderer.positionCount = 0;
-        if (lightningLine != null) lightningLine.ClearLightning();
     }
 
     Jelly GetJellyUnderMouse()
