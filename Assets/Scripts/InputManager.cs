@@ -7,6 +7,7 @@ public class InputManager : MonoBehaviour
     [Header("References")]
     public BoardManager boardManager;
     public LineRenderer lineRenderer;
+    public GameObject dragSparklePrefab;
 
     [Header("Color Palette")]
     public Color[] jellyColors = new Color[]
@@ -167,12 +168,30 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    void SelectJelly(Jelly jelly)
+private void SelectJelly(Jelly jelly)
+{
+    if (!selectedJellies.Contains(jelly))
     {
         selectedJellies.Add(jelly);
-        jelly.SelectSquish();
-        StartCoroutine(jelly.ShakeJelly(0.08f, 0.03f));
+        
+       StartCoroutine(jelly.ShakeJelly(0.08f, 0.03f));
+
+        if (AudioManager.Instance != null)
+        {
+            float pitchStep = 0.08f; 
+            float currentPitch = Mathf.Clamp(0.85f + (selectedJellies.Count * pitchStep), 0.85f, 2.0f);
+            
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, currentPitch, 0.7f);
+        }
+
+        if (dragSparklePrefab != null)
+        {
+            Instantiate(dragSparklePrefab, jelly.transform.position, Quaternion.identity);
+        }
+
+        UpdateFullLinePositions();
     }
+}
 
     void UpdateFullLinePositions()
     {
@@ -198,6 +217,7 @@ public class InputManager : MonoBehaviour
         if (lineRenderer != null) lineRenderer.positionCount = 0;
 
         Vector3 mergeCenter = jelliesToMerge[jelliesToMerge.Count - 1].transform.position;
+        int jellyCount = jelliesToMerge.Count;
 
         for (int i = 0; i < jelliesToMerge.Count; i++)
         {
@@ -206,6 +226,14 @@ public class InputManager : MonoBehaviour
         }
 
         yield return new WaitForSeconds((jelliesToMerge.Count * 0.03f) + 0.18f);
+
+        int simulatedComboMultiplier = 27; // Simulated combo multiplier for testing purposes
+
+        // COMBO QUALITY system integration
+        if (ComboQualityManager.Instance != null)
+        {
+            ComboQualityManager.Instance.ProcessComboQuality(jellyCount, simulatedComboMultiplier, mergeCenter);
+        }
 
         boardManager.ProcessMatches(jelliesToMerge);
         selectedJellies.Clear();
@@ -238,6 +266,17 @@ public class InputManager : MonoBehaviour
         selectedJellies.Clear();
 
         if (lineRenderer != null) lineRenderer.positionCount = 0;
+
+        if (AudioManager.Instance != null)
+{
+        float randomPitch = Random.Range(0.95f, 1.05f);
+        AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, randomPitch);
+
+        if (ComboUIManager.Instance != null)
+        {
+            ComboUIManager.Instance.UpdateComboUI(selectedJellies.Count);
+        }
+}
     }
 
     Jelly GetJellyUnderMouse()

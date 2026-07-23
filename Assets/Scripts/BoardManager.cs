@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class BoardManager : MonoBehaviour
 {
@@ -25,6 +26,13 @@ public class BoardManager : MonoBehaviour
 
     private Jelly[,] board;
     public bool IsProcessing { get; private set; } = false;
+
+    public static BoardManager Instance;
+
+    private void Awake()
+    {
+        if (Instance == null) Instance = this;
+    }
 
     void Start()
     {
@@ -256,5 +264,21 @@ public class BoardManager : MonoBehaviour
         }
 
         if (target != null) target.position = endPos;
+    }
+
+    // --- IMMORTAL ASMR SHOCKWAVE ---
+    public void TriggerGlobalImmortalShake()
+    {
+        Jelly[] allJellies = FindObjectsOfType<Jelly>();
+
+        foreach (Jelly jelly in allJellies)
+        {
+            if (jelly != null)
+            {
+                StartCoroutine(jelly.ShakeJelly(0.25f, 0.08f)); 
+            }
+        }
+
+        // CameraShake.Instance.Shake(0.3f, 0.1f);
     }
 }
