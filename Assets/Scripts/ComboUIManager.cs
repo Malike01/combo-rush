@@ -45,7 +45,7 @@ public class ComboUIManager : MonoBehaviour
         }
     }
 
-    // Combos UI güncellemesi ve animasyonu
+    // Combos UI Update and Punch Animation
     public void UpdateComboUI(int currentCombo)
     {
         if (comboText == null) return;

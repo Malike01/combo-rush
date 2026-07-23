@@ -3,6 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+[System.Serializable]
+public struct JellyTheme
+{
+    public string themeName; // Inspector'da düzenli durması için (Örn: "Turuncu", "Mavi")
+    [Tooltip("0: Default, 1: Combo 1, 2: Combo 2...")]
+    public Sprite[] progressionSprites; 
+}
+
 public class BoardManager : MonoBehaviour
 {
     [Header("Board Settings")]
@@ -12,7 +20,9 @@ public class BoardManager : MonoBehaviour
 
     [Header("References")]
     public GameObject jellyPrefab;
-    public Sprite[] jellySprites;
+
+    [Header("Jelly Evolutions")]
+    public JellyTheme[] jellyThemes; // Eski jellySprites yerine artık bu evrim dizisini kullanıyoruz
 
     [Header("Grid Visuals")]
     public GameObject cellPrefab;  // Background cell prefab assigned from Inspector
@@ -36,9 +46,9 @@ public class BoardManager : MonoBehaviour
 
     void Start()
     {
-        if (jellyPrefab == null || jellySprites == null || jellySprites.Length == 0)
+        if (jellyPrefab == null || jellyThemes == null || jellyThemes.Length == 0)
         {
-            Debug.LogError("BoardManager: Missing Prefab or Sprite array!");
+            Debug.LogError("BoardManager: Missing Prefab or Jelly Themes array!");
             return;
         }
 
@@ -109,7 +119,6 @@ public class BoardManager : MonoBehaviour
     // Converts grid coordinates to world space position
     public Vector3 GetWorldPosition(float x, float y)
     {
-        // Local merkez hesabı
         float localX = -((width - 1) * spacing) / 2f + (x * spacing);
         float localY = -((height - 1) * spacing) / 2f + (y * spacing);
 
@@ -121,7 +130,7 @@ public class BoardManager : MonoBehaviour
 
     void SpawnJellyAt(int x, int y, Vector3 spawnPos)
     {
-        int randomIndex = Random.Range(0, jellySprites.Length);
+        int randomIndex = Random.Range(0, jellyThemes.Length);
 
         GameObject jellyObj = Instantiate(jellyPrefab, spawnPos, Quaternion.identity, transform);
         jellyObj.name = $"Jelly ({x},{y})";
@@ -131,7 +140,8 @@ public class BoardManager : MonoBehaviour
         {
             jellyScript.x = x;
             jellyScript.y = y;
-            jellyScript.SetSprite(jellySprites[randomIndex], randomIndex);
+            // YENİ EVRİM SİSTEMİ ÇAĞRISI
+            jellyScript.SetupEvolution(jellyThemes[randomIndex].progressionSprites, randomIndex);
             board[x, y] = jellyScript;
         }
     }
@@ -229,7 +239,7 @@ public class BoardManager : MonoBehaviour
                     Vector3 spawnAbovePos = new Vector3(GetWorldPosition(x, height).x, GetWorldPosition(x, height).y, -1f); 
                     Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
 
-                    int randomIndex = Random.Range(0, jellySprites.Length);
+                    int randomIndex = Random.Range(0, jellyThemes.Length);
                     GameObject jellyObj = Instantiate(jellyPrefab, spawnAbovePos, Quaternion.identity, transform);
                     jellyObj.name = $"Jelly ({x},{y})";
 
@@ -238,7 +248,7 @@ public class BoardManager : MonoBehaviour
                     {
                         jellyScript.x = x;
                         jellyScript.y = y;
-                        jellyScript.SetSprite(jellySprites[randomIndex], randomIndex);
+                        jellyScript.SetupEvolution(jellyThemes[randomIndex].progressionSprites, randomIndex);
                         board[x, y] = jellyScript;
 
                         // Animate falling into target position
@@ -269,7 +279,7 @@ public class BoardManager : MonoBehaviour
     // --- IMMORTAL ASMR SHOCKWAVE ---
     public void TriggerGlobalImmortalShake()
     {
-        Jelly[] allJellies = FindObjectsOfType<Jelly>();
+        Jelly[] allJellies = Object.FindObjectsByType<Jelly>(FindObjectsSortMode.None);
 
         foreach (Jelly jelly in allJellies)
         {
@@ -278,7 +288,5 @@ public class BoardManager : MonoBehaviour
                 StartCoroutine(jelly.ShakeJelly(0.25f, 0.08f)); 
             }
         }
-
-        // CameraShake.Instance.Shake(0.3f, 0.1f);
     }
 }

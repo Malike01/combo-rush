@@ -168,31 +168,42 @@ public class InputManager : MonoBehaviour
         }
     }
 
-private void SelectJelly(Jelly jelly)
-{
-    if (!selectedJellies.Contains(jelly))
+    private void SelectJelly(Jelly jelly)
     {
-        selectedJellies.Add(jelly);
-        
-       StartCoroutine(jelly.ShakeJelly(0.08f, 0.03f));
-
-        if (AudioManager.Instance != null)
+        if (!selectedJellies.Contains(jelly))
         {
-            float pitchStep = 0.08f; 
-            float currentPitch = Mathf.Clamp(0.85f + (selectedJellies.Count * pitchStep), 0.85f, 2.0f);
+            selectedJellies.Add(jelly);
             
-            AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, currentPitch, 0.7f);
-        }
+            StartCoroutine(jelly.ShakeJelly(0.08f, 0.03f));
 
-        if (dragSparklePrefab != null)
-        {
-            Instantiate(dragSparklePrefab, jelly.transform.position, Quaternion.identity);
-        }
+            // Pitch Scaling
+            if (AudioManager.Instance != null)
+            {
+                float pitchStep = 0.08f; 
+                float currentPitch = Mathf.Clamp(0.85f + (selectedJellies.Count * pitchStep), 0.85f, 2.0f);
+                
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, currentPitch, 0.7f);
+            }
 
-        UpdateFullLinePositions();
+            if (dragSparklePrefab != null)
+            {
+                Instantiate(dragSparklePrefab, jelly.transform.position, Quaternion.identity);
+            }
+
+            int currentCombo = selectedJellies.Count;
+            foreach (Jelly selectedJelly in selectedJellies)
+            {
+                selectedJelly.UpdateExpression(currentCombo);
+            }
+
+            if (ComboUIManager.Instance != null)
+            {
+                ComboUIManager.Instance.UpdateComboUI(currentCombo);
+            }
+
+            UpdateFullLinePositions();
+        }
     }
-}
-
     void UpdateFullLinePositions()
     {
         if (lineRenderer == null) return;
@@ -255,6 +266,14 @@ private void SelectJelly(Jelly jelly)
 
     void ClearSelection()
     {
+        foreach (Jelly jelly in selectedJellies)
+        {
+            if (jelly != null)
+            {
+                jelly.UpdateExpression(1);
+            }
+        }
+
         foreach (var jelly in selectedJellies)
         {
             if (jelly != null)
@@ -276,7 +295,16 @@ private void SelectJelly(Jelly jelly)
         {
             ComboUIManager.Instance.UpdateComboUI(selectedJellies.Count);
         }
-}
+
+        foreach (Jelly jelly in selectedJellies)
+        {
+            if (jelly != null)
+            {
+                jelly.ResetShape(); 
+            }
+        }
+        selectedJellies.Clear();
+        }
     }
 
     Jelly GetJellyUnderMouse()

@@ -10,21 +10,138 @@ public class Jelly : MonoBehaviour
     [Header("Color Index")]
     public int colorIndex;
 
+    private Sprite[] evolutionSprites;
     private SpriteRenderer spriteRenderer;
+    
     private Vector3 originalScale;
-    private Coroutine activeTween;
+    private bool isScaleInitialized = false;
+
+    private Coroutine activeScaleRoutine;
     private Coroutine wiggleCoroutine;
 
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        originalScale = transform.localScale;
+        InitScale();
     }
 
-    // --- SMOOTH & CUTE IDLE WIGGLE ---
+    private void InitScale()
+    {
+        if (!isScaleInitialized)
+        {
+            if (transform.localScale != Vector3.zero)
+            {
+                originalScale = transform.localScale;
+            }
+            else
+            {
+                originalScale = Vector3.one;
+            }
+            isScaleInitialized = true;
+        }
+    }
+
+    public void SetupEvolution(Sprite[] sprites, int index)
+    {
+        InitScale();
+        evolutionSprites = sprites;
+        colorIndex = index;
+
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+
+        if (sprites != null && sprites.Length > 0)
+        {
+            spriteRenderer.sprite = sprites[0];
+        }
+    }
+
+    public void UpdateExpression(int comboCount)
+    {
+        if (evolutionSprites == null || evolutionSprites.Length == 0) return;
+
+        int targetIndex = Mathf.Clamp(comboCount, 0, evolutionSprites.Length - 1);
+        Sprite targetSprite = evolutionSprites[targetIndex];
+
+        // Check if the current sprite is different from the target sprite before updating
+        if (spriteRenderer.sprite != targetSprite)
+        {
+            spriteRenderer.sprite = targetSprite;
+        }
+
+        bool isEvolved = comboCount > 0;
+        TriggerSquishImpact(isEvolved);
+    }
+
+    public void SelectSquish()
+    {
+        TriggerSquishImpact(false);
+    }
+
+    private void TriggerSquishImpact(bool isEvolved)
+    {
+        StopIdleWiggle();
+
+        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
+        activeScaleRoutine = StartCoroutine(AnimateSquishRoutine(isEvolved));
+    }
+
+    private IEnumerator AnimateSquishRoutine(bool isEvolved)
+    {
+      
+        float boostMultiplier = isEvolved ? 1.20f : 1.15f;
+        Vector3 targetScale = new Vector3(originalScale.x * boostMultiplier, originalScale.y * (boostMultiplier - 0.05f), originalScale.z);
+        float duration = 0.08f;
+        float elapsed = 0f;
+        Vector3 startScale = transform.localScale;
+
+        // Pop/Squish UP
+        while (elapsed < duration)
+        {
+            float t = elapsed / duration;
+            transform.localScale = Vector3.Lerp(startScale, targetScale, t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        
+        transform.localScale = targetScale;
+        activeScaleRoutine = null;
+    }
+
+    public void ResetShape()
+    {
+        StopIdleWiggle();
+
+        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
+
+        if (evolutionSprites != null && evolutionSprites.Length > 0)
+        {
+            if (spriteRenderer != null) spriteRenderer.sprite = evolutionSprites[0];
+        }
+
+        activeScaleRoutine = StartCoroutine(AnimateReturnToOriginal(0.1f));
+    }
+
+    private IEnumerator AnimateReturnToOriginal(float duration)
+    {
+        Vector3 startScale = transform.localScale;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+            transform.localScale = Vector3.Lerp(startScale, originalScale, t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.localScale = originalScale;
+        activeScaleRoutine = null;
+    }
+
+    // --- IDLE WIGGLE ---
     public void StartIdleWiggle()
     {
-        if (wiggleCoroutine == null)
+        if (wiggleCoroutine == null && activeScaleRoutine == null)
         {
             wiggleCoroutine = StartCoroutine(WiggleRoutine());
         }
@@ -36,81 +153,31 @@ public class Jelly : MonoBehaviour
         {
             StopCoroutine(wiggleCoroutine);
             wiggleCoroutine = null;
-            
-            // Smoothly return to selection scale or original scale
-            if (activeTween == null)
-            {
-                transform.localScale = originalScale;
-            }
+            transform.localScale = originalScale;
         }
     }
 
-  private IEnumerator WiggleRoutine()
+    private IEnumerator WiggleRoutine()
     {
         float elapsed = 0f;
-        float duration = 1.8f; // Slow and gentle breathing cycle
-        Vector3 baseScale = transform.localScale;
+        float duration = 1.8f;
 
         while (elapsed < duration)
         {
             float progress = elapsed / duration;
-            
-            // Soft sine wave oscillation
             float pulse = Mathf.Sin(progress * Mathf.PI * 2f);
             
-            // Very subtle squash & stretch (~3.5% scale change)
-            float scaleX = baseScale.x + (pulse * 0.035f);
-            float scaleY = baseScale.y - (pulse * 0.025f);
+            float scaleX = originalScale.x + (pulse * 0.035f);
+            float scaleY = originalScale.y - (pulse * 0.025f);
 
-            transform.localScale = new Vector3(scaleX, scaleY, baseScale.z);
+            transform.localScale = new Vector3(scaleX, scaleY, originalScale.z);
 
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        // Smoothly reset scale after wiggle cycle completes
-        transform.localScale = baseScale;
+        transform.localScale = originalScale;
         wiggleCoroutine = null;
-    }
-
-
-    public void SetSprite(Sprite sprite, int index)
-    {
-        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
-        spriteRenderer.sprite = sprite;
-        colorIndex = index;
-    }
-
-    public void SelectSquish()
-    {
-        if (activeTween != null) StopCoroutine(activeTween);
-        Vector3 targetScale = originalScale * 1.18f;
-        activeTween = StartCoroutine(AnimateScale(targetScale, 0.12f));
-    }
-
-    public void ResetShape()
-    {
-        StopIdleWiggle();
-        if (activeTween != null) StopCoroutine(activeTween);
-        activeTween = StartCoroutine(AnimateScale(originalScale, 0.12f));
-    }
-
-    private IEnumerator AnimateScale(Vector3 targetScale, float duration)
-    {
-        Vector3 startScale = transform.localScale;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            // SmoothStep transition for soft touch feedback
-            float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
-            transform.localScale = Vector3.Lerp(startScale, targetScale, t);
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        transform.localScale = targetScale;
-        activeTween = null;
     }
 
     public IEnumerator ShakeJelly(float duration = 0.12f, float magnitude = 0.04f)
