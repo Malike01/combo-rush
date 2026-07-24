@@ -6,7 +6,7 @@ using UnityEngine.UI;
 [System.Serializable]
 public struct JellyTheme
 {
-    public string themeName; // Inspector'da düzenli durması için (Örn: "Turuncu", "Mavi")
+    public string themeName; 
     [Tooltip("0: Default, 1: Combo 1, 2: Combo 2...")]
     public Sprite[] progressionSprites; 
 }
@@ -22,7 +22,7 @@ public class BoardManager : MonoBehaviour
     public GameObject jellyPrefab;
 
     [Header("Jelly Evolutions")]
-    public JellyTheme[] jellyThemes; // Eski jellySprites yerine artık bu evrim dizisini kullanıyoruz
+    public JellyTheme[] jellyThemes;
 
     [Header("Grid Visuals")]
     public GameObject cellPrefab;  // Background cell prefab assigned from Inspector
@@ -38,6 +38,9 @@ public class BoardManager : MonoBehaviour
     public bool IsProcessing { get; private set; } = false;
 
     public static BoardManager Instance;
+    private Coroutine hintTimerCoroutine;
+    private List<Jelly> currentHintJellies = new List<Jelly>();
+    private bool isHintActive = false;
 
     private void Awake()
     {
@@ -54,6 +57,7 @@ public class BoardManager : MonoBehaviour
 
         board = new Jelly[width, height];
         GenerateBoard();
+        ResetHintTimer();
     }
 
     void GenerateBoard()
@@ -189,6 +193,8 @@ public class BoardManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.15f);
 
+        ResetHintTimer();
+
         // 2. Drop existing jellies down
         yield return StartCoroutine(CollapseGridRoutine());
 
@@ -292,6 +298,174 @@ public class BoardManager : MonoBehaviour
             {
                 StartCoroutine(jelly.ShakeJelly(0.25f, 0.08f)); 
             }
+        }
+    }
+
+    // ==========================================
+    // --- HINT (IPUCU) VE TIMER SISTEMI ---
+    // ==========================================
+    private void Update()
+    {
+        if (Input.GetMouseButtonDown(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began))
+        {
+            ResetHintTimer();
+        }
+    }
+
+    public void ResetHintTimer()
+    {
+        ClearHintEffects();
+
+        if (hintTimerCoroutine != null)
+        {
+            StopCoroutine(hintTimerCoroutine);
+        }
+
+        if (!IsProcessing)
+        {
+            hintTimerCoroutine = StartCoroutine(HintTimerRoutine());
+        }
+    }
+
+    private IEnumerator HintTimerRoutine()
+    {
+        yield return new WaitForSeconds(5.0f);
+        ShowBestComboHint();
+    }
+
+  public void ShowBestComboHint()
+    {
+        if (IsProcessing) return;
+
+        List<Jelly> bestGroup = FindLargestConnectedGroup();
+
+        if (bestGroup != null && bestGroup.Count > 0)
+        {
+            currentHintJellies = bestGroup;
+            isHintActive = true;
+
+            foreach (Jelly jelly in currentHintJellies)
+            {
+                if (jelly != null)
+                {
+                    jelly.StartIdleWiggle(); 
+                }
+            }
+        }
+    }
+
+    public void ClearHintEffects()
+    {
+        isHintActive = false;
+        
+        foreach (Jelly jelly in currentHintJellies)
+        {
+            if (jelly != null)
+            {
+                jelly.StopIdleWiggle();
+            }
+        }
+        
+        currentHintJellies.Clear();
+    }
+
+    // --- Flood Fill / BFS ---
+    private List<Jelly> FindLargestConnectedGroup()
+    {
+        bool[,] visited = new bool[width, height];
+        List<Jelly> largestGroup = new List<Jelly>();
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (board[x, y] != null && !visited[x, y])
+                {
+                    List<Jelly> currentGroup = GetConnectedGroup(x, y, visited);
+                    
+                    if (currentGroup.Count >= 4 && currentGroup.Count > largestGroup.Count)
+                    {
+                        largestGroup = currentGroup;
+                    }
+                }
+            }
+        }
+
+        return largestGroup; 
+    }
+    private List<Jelly> GetConnectedGroup(int startX, int startY, bool[,] visited)
+    {
+        List<Jelly> group = new List<Jelly>();
+        int targetTheme = board[startX, startY].colorIndex; 
+
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
+        queue.Enqueue(new Vector2Int(startX, startY));
+        visited[startX, startY] = true;
+
+        Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+
+        while (queue.Count > 0)
+        {
+            Vector2Int current = queue.Dequeue();
+            Jelly currentJelly = board[current.x, current.y];
+            group.Add(currentJelly);
+
+            foreach (var dir in directions)
+            {
+                int nextX = current.x + dir.x;
+                int nextY = current.y + dir.y;
+
+                if (nextX >= 0 && nextX < width && nextY >= 0 && nextY < height)
+                {
+                    if (!visited[nextX, nextY] && board[nextX, nextY] != null)
+                    {
+                        if (board[nextX, nextY].colorIndex == targetTheme)
+                        {
+                            visited[nextX, nextY] = true;
+                            queue.Enqueue(new Vector2Int(nextX, nextY));
+                        }
+                    }
+                }
+            }
+        }
+
+        return group;
+    }
+
+    // ---  Juicy Bounce Animation ---
+   private IEnumerator AnimateHintJelly(Transform jellyTransform)
+    {
+        Vector3 originalScale = Vector3.one;
+        Vector3 targetScale = originalScale * 1.0f; 
+
+        while (isHintActive && jellyTransform != null)
+        {
+            float elapsed = 0f;
+            float duration = 0.8f;
+
+            while (elapsed < duration && isHintActive && jellyTransform != null)
+            {
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+                jellyTransform.localScale = Vector3.Lerp(originalScale, targetScale, t);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            elapsed = 0f;
+            while (elapsed < duration && isHintActive && jellyTransform != null)
+            {
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+                jellyTransform.localScale = Vector3.Lerp(targetScale, originalScale, t);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(0.3f);
+        }
+
+        if (jellyTransform != null)
+        {
+            jellyTransform.localScale = originalScale;
         }
     }
 }

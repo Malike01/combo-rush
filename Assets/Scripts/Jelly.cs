@@ -9,6 +9,9 @@ public class Jelly : MonoBehaviour
 
     [Header("Color Index")]
     public int colorIndex;
+    
+    // BoardManager algoritmasının sorunsuz erişebilmesi için kısayol
+    public int themeIndex => colorIndex; 
 
     private Sprite[] evolutionSprites;
     private SpriteRenderer spriteRenderer;
@@ -62,7 +65,6 @@ public class Jelly : MonoBehaviour
         int targetIndex = Mathf.Clamp(comboCount, 0, evolutionSprites.Length - 1);
         Sprite targetSprite = evolutionSprites[targetIndex];
 
-        // Check if the current sprite is different from the target sprite before updating
         if (spriteRenderer.sprite != targetSprite)
         {
             spriteRenderer.sprite = targetSprite;
@@ -86,14 +88,12 @@ public class Jelly : MonoBehaviour
 
     private IEnumerator AnimateSquishRoutine()
     {
-      
-        float boostMultiplier = 1.05f; // Default boost for non-evolved state
+        float boostMultiplier = 1.05f;
         Vector3 targetScale = new Vector3(originalScale.x * boostMultiplier, originalScale.y * (boostMultiplier - 0.05f), originalScale.z);
         float duration = 0.08f;
         float elapsed = 0f;
         Vector3 startScale = transform.localScale;
 
-        // Pop/Squish UP
         while (elapsed < duration)
         {
             float t = elapsed / duration;
@@ -152,31 +152,34 @@ public class Jelly : MonoBehaviour
         {
             StopCoroutine(wiggleCoroutine);
             wiggleCoroutine = null;
-            transform.localScale = originalScale;
         }
+        transform.localScale = originalScale; 
     }
 
     private IEnumerator WiggleRoutine()
     {
-        float elapsed = 0f;
-        float duration = 1.8f;
-
-        while (elapsed < duration)
+        while (true)
         {
-            float progress = elapsed / duration;
-            float pulse = Mathf.Sin(progress * Mathf.PI * 2f);
-            
-            float scaleX = originalScale.x + (pulse * 0.035f);
-            float scaleY = originalScale.y - (pulse * 0.025f);
+            float elapsed = 0f;
+            float duration = 1.5f; 
 
-            transform.localScale = new Vector3(scaleX, scaleY, originalScale.z);
+            while (elapsed < duration)
+            {
+                float progress = elapsed / duration;
+                float pulse = Mathf.Sin(progress * Mathf.PI * 2f);
+                
+                float scaleX = originalScale.x + (pulse * 0.025f);
+                float scaleY = originalScale.y - (pulse * 0.025f);
 
-            elapsed += Time.deltaTime;
+                transform.localScale = new Vector3(scaleX, scaleY, originalScale.z);
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            transform.localScale = originalScale;
             yield return null;
         }
-
-        transform.localScale = originalScale;
-        wiggleCoroutine = null;
     }
 
     public IEnumerator ShakeJelly(float duration = 0.12f, float magnitude = 0.04f)

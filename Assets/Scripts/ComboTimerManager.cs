@@ -7,7 +7,7 @@ public class ComboTimerManager : MonoBehaviour
     public static ComboTimerManager Instance;
 
     [Header("Timer Settings")]
-    public float maxTime = 5.0f;
+    public float maxTime = 30.0f;
     private float currentTime;
     private bool isTimerRunning = false;
 
