@@ -157,7 +157,7 @@ public class InputManager : MonoBehaviour
             isDragging = false;
             ResetHoverTimer();
 
-            if (selectedJellies.Count >= 3)
+            if (selectedJellies.Count >= 4)
             {
                 StartCoroutine(ProcessMergeSequence(new List<Jelly>(selectedJellies)));
             }
@@ -331,6 +331,7 @@ public class InputManager : MonoBehaviour
     {
         int dx = Mathf.Abs(a.x - b.x);
         int dy = Mathf.Abs(a.y - b.y);
-        return (dx <= 1 && dy <= 1) && !(dx == 0 && dy == 0);
+
+        return (dx + dy == 1);
     }
 }

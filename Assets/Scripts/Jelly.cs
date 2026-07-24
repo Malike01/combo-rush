@@ -68,27 +68,26 @@ public class Jelly : MonoBehaviour
             spriteRenderer.sprite = targetSprite;
         }
 
-        bool isEvolved = comboCount > 0;
-        TriggerSquishImpact(isEvolved);
+        TriggerSquishImpact();
     }
 
     public void SelectSquish()
     {
-        TriggerSquishImpact(false);
+        TriggerSquishImpact();
     }
 
-    private void TriggerSquishImpact(bool isEvolved)
+    private void TriggerSquishImpact()
     {
         StopIdleWiggle();
 
         if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
-        activeScaleRoutine = StartCoroutine(AnimateSquishRoutine(isEvolved));
+        activeScaleRoutine = StartCoroutine(AnimateSquishRoutine());
     }
 
-    private IEnumerator AnimateSquishRoutine(bool isEvolved)
+    private IEnumerator AnimateSquishRoutine()
     {
       
-        float boostMultiplier = isEvolved ? 1.20f : 1.15f;
+        float boostMultiplier = 1.05f; // Default boost for non-evolved state
         Vector3 targetScale = new Vector3(originalScale.x * boostMultiplier, originalScale.y * (boostMultiplier - 0.05f), originalScale.z);
         float duration = 0.08f;
         float elapsed = 0f;
