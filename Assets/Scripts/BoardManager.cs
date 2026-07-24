@@ -140,6 +140,16 @@ public partial class BoardManager : MonoBehaviour
 
         ResetHintTimer();
 
+        if (ComboTimerManager.Instance != null) 
+        {
+            ComboTimerManager.Instance.StartOrResetTimer();
+        }
+
+        if (ScoreManager.Instance != null) 
+    {
+        ScoreManager.Instance.AddScore(matchedJellies.Count);
+    }
+
         Vector3 burstPoint = matchedJellies[matchedJellies.Count - 1].transform.position;
         SpriteRenderer sr = matchedJellies[0].GetComponent<SpriteRenderer>();
         Color burstColor = sr != null ? sr.color : Color.white;

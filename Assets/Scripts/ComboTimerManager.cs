@@ -7,7 +7,12 @@ public class ComboTimerManager : MonoBehaviour
     public static ComboTimerManager Instance;
 
     [Header("Timer Settings")]
+    [Tooltip("Maximum fill cap for the timer bar (in seconds)")]
     public float maxTime = 30.0f;
+    
+    [Tooltip("Time added on every combo hit instead of full reset (in seconds)")]
+    public float timeBonusPerCombo = 0.02f;
+
     private float currentTime;
     private bool isTimerRunning = false;
 
@@ -34,23 +39,30 @@ public class ComboTimerManager : MonoBehaviour
 
     private void Start()
     {
-        timerFillImage.fillAmount = 1f;
-        barWidth = timerFillImage.rectTransform.rect.width;
+        if (timerFillImage != null)
+        {
+            timerFillImage.fillAmount = 1f;
+            barWidth = timerFillImage.rectTransform.rect.width;
+        }
+        
+        currentTime = maxTime;
     }
 
-   private void Update()
+    private void Update()
     {
         if (!isTimerRunning) return;
 
         currentTime -= Time.deltaTime;
-        float fillRatio = currentTime / maxTime;
-        timerFillImage.fillAmount = fillRatio;
+        float fillRatio = Mathf.Clamp01(currentTime / maxTime);
+        
+        if (timerFillImage != null)
+        {
+            timerFillImage.fillAmount = fillRatio;
+        }
 
         if (dropletPoint != null)
         {
- 
             float currentWidth = barWidth * fillRatio;
-            
             dropletPoint.anchoredPosition = new Vector2(currentWidth, dropletPoint.anchoredPosition.y);
         }
 
@@ -62,14 +74,36 @@ public class ComboTimerManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Starts the timer or adds extra bonus time to the active timer without resetting completely.
+    /// </summary>
     public void StartOrResetTimer()
     {
-        currentTime = maxTime;
-        isTimerRunning = true;
-        
-        if (panicRoutine != null) StopCoroutine(panicRoutine);
-        timerUIRoot.localScale = Vector3.one;
-        timerFillImage.color = safeColor;
+        if (!isTimerRunning)
+        {
+            // First hit: initialize with full or default base time and start running
+            currentTime = maxTime;
+            isTimerRunning = true;
+        }
+        else
+        {
+            // Add bonus time incrementally on each combo, capped at maxTime
+            currentTime = Mathf.Min(currentTime + timeBonusPerCombo, maxTime);
+        }
+
+        // If time recovers above the panic threshold, stop panic state safely
+        if (currentTime > 2.0f && panicRoutine != null)
+        {
+            StopCoroutine(panicRoutine);
+            panicRoutine = null;
+            if (timerUIRoot != null) timerUIRoot.localScale = Vector3.one;
+            if (timerFillImage != null)
+            {
+                timerFillImage.enabled = true;
+                timerFillImage.color = safeColor;
+            }
+            if (AudioManager.Instance != null) AudioManager.Instance.StopPanicSound();
+        }
 
         StartCoroutine(PopTimerUI());
 
@@ -81,8 +115,16 @@ public class ComboTimerManager : MonoBehaviour
 
     public void StopTimer()
     {
-        if (panicRoutine != null) StopCoroutine(panicRoutine);
+        isTimerRunning = false;
+        
+        if (panicRoutine != null)
+        {
+            StopCoroutine(panicRoutine);
+            panicRoutine = null;
+        }
+        
         if (AudioManager.Instance != null) AudioManager.Instance.StopPanicSound();
+        
         if (dropletParticles != null)
         {
             dropletParticles.Stop();
@@ -90,41 +132,52 @@ public class ComboTimerManager : MonoBehaviour
     }
 
     private void UpdateTimerVisuals()
+    {
+        if (currentTime <= 2.0f)
         {
-            if (currentTime <= 2.0f)
+            if (panicRoutine == null && isTimerRunning)
             {
-                if (panicRoutine == null)
+                panicRoutine = StartCoroutine(PanicShakeRoutine());
+                
+                if (AudioManager.Instance != null)
                 {
-                    panicRoutine = StartCoroutine(PanicShakeRoutine());
-                    
-                    if (AudioManager.Instance != null)
-                    {
-                        AudioManager.Instance.StartPanicSound();
-                    }
+                    AudioManager.Instance.StartPanicSound();
                 }
             }
-            else
+        }
+        else
+        {
+            if (timerFillImage != null)
             {
-                timerFillImage.color = Color.white;
+                timerFillImage.color = safeColor;
             }
         }
+    }
 
     private void TimeOut()
     {
         isTimerRunning = false;
         currentTime = 0;
-        timerFillImage.fillAmount = 0;
+        
+        if (timerFillImage != null)
+        {
+            timerFillImage.fillAmount = 0;
+        }
 
         StopTimer();
-        timerUIRoot.localScale = Vector3.one;
-
-        Debug.Log("SÜRE BİTTİ! OYUN SONU.");
         
-    }
+        if (timerUIRoot != null)
+        {
+            timerUIRoot.localScale = Vector3.one;
+        }
 
+        Debug.Log("TIME OVER! GAME OVER.");
+    }
 
     private IEnumerator PopTimerUI()
     {
+        if (timerUIRoot == null) yield break;
+
         Vector3 originalScale = Vector3.one;
         Vector3 targetScale = originalScale * 1.2f;
         float elapsed = 0f;
@@ -150,6 +203,8 @@ public class ComboTimerManager : MonoBehaviour
 
     private IEnumerator PanicShakeRoutine()
     {
+        if (timerUIRoot == null) yield break;
+
         Vector3 originalPos = timerUIRoot.anchoredPosition;
         
         while (isTimerRunning && currentTime <= 2.0f)
@@ -159,13 +214,19 @@ public class ComboTimerManager : MonoBehaviour
             
             timerUIRoot.anchoredPosition = originalPos + new Vector3(offsetX, offsetY, 0);
             
-            timerFillImage.enabled = !timerFillImage.enabled;
+            if (timerFillImage != null)
+            {
+                timerFillImage.enabled = !timerFillImage.enabled;
+            }
 
             yield return new WaitForSeconds(0.05f);
         }
 
         timerUIRoot.anchoredPosition = originalPos;
-        timerFillImage.enabled = true;
+        if (timerFillImage != null)
+        {
+            timerFillImage.enabled = true;
+        }
         panicRoutine = null;
     }
 }

@@ -43,7 +43,7 @@ public partial class BoardManager : MonoBehaviour
 
         List<Jelly> bestGroup = FindLargestConnectedGroup();
 
-        if (bestGroup != null && bestGroup.Count > 0)
+        if (bestGroup != null && bestGroup.Count >= 4)
         {
             currentHintJellies = bestGroup;
             isHintActive = true;
@@ -68,7 +68,7 @@ public partial class BoardManager : MonoBehaviour
             {
                 if (board[x, y] != null && board[x, y].gameObject != null)
                 {
-                    board[x, y].ResetScale();
+                    board[x, y].ResetScale(); 
                 }
             }
         }
@@ -78,100 +78,62 @@ public partial class BoardManager : MonoBehaviour
 
     private List<Jelly> FindLargestConnectedGroup()
     {
-        bool[,] visited = new bool[width, height];
-        List<Jelly> largestGroup = new List<Jelly>();
+        List<Jelly> bestPath = new List<Jelly>();
+      
+        int maxPathSearchCap = 12; 
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                if (board[x, y] != null && !visited[x, y])
+                if (board[x, y] != null)
                 {
-                    List<Jelly> currentGroup = GetConnectedGroup(x, y, visited);
+                    List<Jelly> currentPath = new List<Jelly>();
+                    bool[,] visited = new bool[width, height];
                     
-                    if (currentGroup.Count >= 4 && currentGroup.Count > largestGroup.Count)
-                    {
-                        largestGroup = currentGroup;
-                    }
+                    DFS_LongestPath(x, y, board[x, y].colorIndex, currentPath, visited, ref bestPath, maxPathSearchCap);
+                    
+                    if (bestPath.Count >= maxPathSearchCap) 
+                        return bestPath; 
                 }
             }
         }
 
-        return largestGroup; 
+        return bestPath; 
     }
 
-    private List<Jelly> GetConnectedGroup(int startX, int startY, bool[,] visited)
+    private void DFS_LongestPath(int x, int y, int targetTheme, List<Jelly> currentPath, bool[,] visited, ref List<Jelly> bestPath, int maxCap)
     {
-        List<Jelly> group = new List<Jelly>();
-        int targetTheme = board[startX, startY].colorIndex; 
+        if (bestPath.Count >= maxCap || currentPath.Count >= maxCap) return;
 
-        Queue<Vector2Int> queue = new Queue<Vector2Int>();
-        queue.Enqueue(new Vector2Int(startX, startY));
-        visited[startX, startY] = true;
+        visited[x, y] = true;
+        currentPath.Add(board[x, y]);
+
+        if (currentPath.Count > bestPath.Count)
+        {
+            bestPath = new List<Jelly>(currentPath);
+        }
 
         Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
 
-        while (queue.Count > 0)
+        foreach (var dir in directions)
         {
-            Vector2Int current = queue.Dequeue();
-            Jelly currentJelly = board[current.x, current.y];
-            group.Add(currentJelly);
+            int nextX = x + dir.x;
+            int nextY = y + dir.y;
 
-            foreach (var dir in directions)
+            if (nextX >= 0 && nextX < width && nextY >= 0 && nextY < height)
             {
-                int nextX = current.x + dir.x;
-                int nextY = current.y + dir.y;
-
-                if (nextX >= 0 && nextX < width && nextY >= 0 && nextY < height)
+                if (!visited[nextX, nextY] && board[nextX, nextY] != null)
                 {
-                    if (!visited[nextX, nextY] && board[nextX, nextY] != null)
+                    if (board[nextX, nextY].colorIndex == targetTheme)
                     {
-                        if (board[nextX, nextY].colorIndex == targetTheme)
-                        {
-                            visited[nextX, nextY] = true;
-                            queue.Enqueue(new Vector2Int(nextX, nextY));
-                        }
+                        DFS_LongestPath(nextX, nextY, targetTheme, currentPath, visited, ref bestPath, maxCap);
                     }
                 }
             }
         }
 
-        return group;
-    }
-
-    private IEnumerator AnimateHintJelly(Transform jellyTransform)
-    {
-        Vector3 originalScale = Vector3.one;
-        Vector3 targetScale = originalScale * 1.0f; 
-
-        while (isHintActive && jellyTransform != null)
-        {
-            float elapsed = 0f;
-            float duration = 0.8f;
-
-            while (elapsed < duration && isHintActive && jellyTransform != null)
-            {
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
-                jellyTransform.localScale = Vector3.Lerp(originalScale, targetScale, t);
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-
-            elapsed = 0f;
-            while (elapsed < duration && isHintActive && jellyTransform != null)
-            {
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
-                jellyTransform.localScale = Vector3.Lerp(targetScale, originalScale, t);
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-
-            yield return new WaitForSeconds(0.3f);
-        }
-
-        if (jellyTransform != null)
-        {
-            jellyTransform.localScale = originalScale;
-        }
+        visited[x, y] = false;
+        currentPath.RemoveAt(currentPath.Count - 1);
     }
 }

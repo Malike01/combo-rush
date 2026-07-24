@@ -65,9 +65,6 @@ public partial class BoardManager : MonoBehaviour
 
     private void TriggerComboBarImpact()
     {
-        if (ScoreManager.Instance != null) ScoreManager.Instance.AddScore(1);
-        if (ComboTimerManager.Instance != null) ComboTimerManager.Instance.StartOrResetTimer();
-
         if (comboBarTarget != null)
         {
             StartCoroutine(PunchScaleUI(comboBarTarget));

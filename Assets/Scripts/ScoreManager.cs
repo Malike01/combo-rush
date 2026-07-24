@@ -6,11 +6,11 @@ public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
 
-    [Header("UI Elemanlari")]
+    [Header("UI Elements")]
     public TextMeshProUGUI scoreText;   // Text (TMP) inside TopPanel
     public TextMeshProUGUI comboText;   // Text (TMP) inside BottomPanel
 
-    [Header("Skor Ayarlari")]
+    [Header("Score Settings")]
     public int baseJellyScore = 100;
 
     private int currentScore = 0;
@@ -61,8 +61,45 @@ public class ScoreManager : MonoBehaviour
 
     private void UpdateUI()
     {
-        if (scoreText != null) scoreText.text = currentScore.ToString();
-        if (comboText != null) comboText.text = $"COMBO x{currentCombo}";
+        if (scoreText != null) 
+        {
+            scoreText.text = currentScore.ToString();
+        }
+
+        if (comboText != null) 
+        {
+            // Apply the evolution naming rules based on the current combo
+            string evolutionName = GetComboEvolutionName(currentCombo);
+            
+            if (currentCombo < 5)
+            {
+                // Default text for low combos
+                comboText.text = $"Combo x{currentCombo}";
+            }
+            else
+            {
+                // Evolved text for high combos
+                comboText.text = $"{evolutionName} x{currentCombo}";
+            }
+        }
+    }
+
+    // --- COMBO EVOLUTION RULES ---
+    /// <summary>
+    /// Returns the specific naming tier based on the current combo count.
+    /// Checked in descending order to ensure the highest threshold is met first.
+    /// </summary>
+    private string GetComboEvolutionName(int combo)
+    {
+        if (combo >= 100) return "Unbreakable Core";
+        if (combo >= 75)  return "Divine Core";
+        if (combo >= 50)  return "Immortal Core";
+        if (combo >= 30)  return "Legendary Core";
+        if (combo >= 20)  return "Perfect Core";
+        if (combo >= 10)  return "Alive Core";
+        if (combo >= 5)   return "Combo Core";
+
+        return "Combo"; // Fallback
     }
 
     // --- ANIMATION SECTION ---
@@ -83,7 +120,7 @@ public class ScoreManager : MonoBehaviour
     }
 
     /// <summary>
-    /// It quickly scales the object up to the target size and smoothly returns it to its original size
+    /// Quickly scales the object up to the target size and smoothly returns it to its original size.
     /// </summary>
     private IEnumerator PunchScaleRoutine(Transform targetTransform, float scaleFactor, float duration)
     {
@@ -102,7 +139,7 @@ public class ScoreManager : MonoBehaviour
         }
         targetTransform.localScale = punchScale;
 
-        // 2. Shrinking / Return to Original State Stage
+        // 2. Shrinking / Return to Original State Phase
         elapsed = 0f;
         while (elapsed < halfDuration)
         {
