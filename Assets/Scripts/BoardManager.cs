@@ -172,6 +172,11 @@ public class BoardManager : MonoBehaviour
             ScoreManager.Instance.AddScore(matchedJellies.Count);
         }
 
+        if (ComboTimerManager.Instance != null)
+        {
+            ComboTimerManager.Instance.StartOrResetTimer();
+        }
+
         // 1. Clear matched jellies
         foreach (var jelly in matchedJellies)
         {

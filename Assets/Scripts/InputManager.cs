@@ -8,6 +8,7 @@ public class InputManager : MonoBehaviour
     public BoardManager boardManager;
     public LineRenderer lineRenderer;
     public GameObject dragSparklePrefab;
+    private bool hasGameStarted = false;
 
     [Header("Color Palette")]
     public Color[] jellyColors = new Color[]
@@ -173,6 +174,15 @@ public class InputManager : MonoBehaviour
         if (!selectedJellies.Contains(jelly))
         {
             selectedJellies.Add(jelly);
+
+            if (!hasGameStarted)
+            {
+                hasGameStarted = true;
+                if (ComboTimerManager.Instance != null)
+                {
+                    ComboTimerManager.Instance.StartOrResetTimer();
+                }
+            }
             
             StartCoroutine(jelly.ShakeJelly(0.08f, 0.03f));
 

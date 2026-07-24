@@ -6,6 +6,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("Audio Source")]
     public AudioSource sfxSource;
+    public AudioSource loopingSfxSource;
 
     [Header("SFX Clips")]
     public AudioClip jellyPopSound;      // Normal Jelly Pop Sound
@@ -14,6 +15,10 @@ public class AudioManager : MonoBehaviour
     public AudioClip perfectComboSound;  // 10-14 Perfect Combo
     public AudioClip legendaryComboSound;// 15-19 Legendary Combo
     public AudioClip immortalComboSound; // 20+ Immortal Combo
+
+    [Header("Time Pressure Audio Clips")]
+    public AudioClip fastTickClip;    // Fast ticking sound for warning
+    public AudioClip timeOutClip;
 
     void Awake()
     {
@@ -53,4 +58,36 @@ public class AudioManager : MonoBehaviour
         else if (jellyCount >= 20)
             PlaySFX(immortalComboSound, 1.2f, 1.2f);
     }
+
+    public void PlayTimeOutSound()
+    {
+        if (timeOutClip != null && sfxSource != null)
+        {
+            sfxSource.PlayOneShot(timeOutClip);
+        }
+    }
+    /// <summary>
+    /// Starts the panic sound for time pressure.
+    /// </summary>
+    public void StartPanicSound()
+    {
+        if (fastTickClip != null && loopingSfxSource != null)
+        {
+            if (!loopingSfxSource.isPlaying)
+            {
+                loopingSfxSource.clip = fastTickClip;
+                loopingSfxSource.loop = true; 
+                loopingSfxSource.Play();
+            }
+        }
+    }
+
+    public void StopPanicSound()
+    {
+        if (loopingSfxSource != null && loopingSfxSource.isPlaying)
+        {
+            loopingSfxSource.Stop();
+        }
+    }
+
 }
