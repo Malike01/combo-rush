@@ -59,6 +59,13 @@ public partial class BoardManager : MonoBehaviour
             yield return null;
         }
 
+        Color jellyColor = sr != null ? sr.color : Color.white;
+
+        if (ComboBarImpactFX.Instance != null)
+        {
+            ComboBarImpactFX.Instance.PlayImpact(jellyColor);
+        }
+
         Destroy(jellyObj); 
         TriggerComboBarImpact();
     }
