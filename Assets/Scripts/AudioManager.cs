@@ -7,6 +7,7 @@ public class AudioManager : MonoBehaviour
     [Header("Audio Source")]
     public AudioSource sfxSource;
     public AudioSource loopingSfxSource;
+    public AudioClip ShuffleExplosion;       // Sound effect for the shuffle explosion
 
     [Header("SFX Clips")]
     public AudioClip jellyPopSound;      // Normal Jelly Pop Sound
@@ -87,6 +88,23 @@ public class AudioManager : MonoBehaviour
         if (loopingSfxSource != null && loopingSfxSource.isPlaying)
         {
             loopingSfxSource.Stop();
+        }
+    }
+
+    public void PlaySound(string soundName)
+    {
+        AudioClip clipToPlay = null;
+
+        switch (soundName)
+        {
+            case "ShuffleExplosion":
+                clipToPlay = ShuffleExplosion;
+                break;
+        }
+
+        if (clipToPlay != null)
+        {
+            PlaySFX(clipToPlay);
         }
     }
 

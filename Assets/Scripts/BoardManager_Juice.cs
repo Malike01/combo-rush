@@ -114,17 +114,25 @@ public partial class BoardManager : MonoBehaviour
         IsProcessing = true;
         ClearHintEffects();
 
+        // 1. WARNING ANIMATION: Global panic shake
         TriggerGlobalImmortalShake();
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.4f);
 
         List<Jelly> allJellies = new List<Jelly>();
+        
+        Dictionary<Transform, Vector3> originalScales = new Dictionary<Transform, Vector3>();
+
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
                 if (board[x, y] != null && board[x, y].gameObject != null)
                 {
-                    allJellies.Add(board[x, y]);
+                    Jelly j = board[x, y];
+                    allJellies.Add(j);
+                    
+                    // Jölenin gerçek boyutunu hafızaya alıyoruz
+                    originalScales[j.transform] = j.transform.localScale;
                 }
                 else
                 {
@@ -135,16 +143,29 @@ public partial class BoardManager : MonoBehaviour
 
         Vector3 centerWorldPos = GetWorldPosition((width - 1) / 2f, (height - 1) / 2f);
 
+        // 2. BLACK HOLE EFFECT
         foreach (Jelly jelly in allJellies)
         {
             if (jelly != null && jelly.gameObject != null)
             {
-                StartCoroutine(jelly.AnimateMergeTo(centerWorldPos, 0f));
+                float randomDelay = Random.Range(0f, 0.15f); 
+                StartCoroutine(SuckIntoCenterRoutine(jelly.transform, centerWorldPos, randomDelay));
             }
         }
 
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.45f);
 
+        if (CameraShake.Instance != null)
+        {
+            CameraShake.Instance.TriggerShake(0.2f, 0.15f);
+        }
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.ShuffleExplosion, 1.0f, 1.0f);
+        }
+
+        // 3. MATHEMATICAL SHUFFLE
         bool validBoardFound = false;
         int attempts = 0;
 
@@ -188,6 +209,7 @@ public partial class BoardManager : MonoBehaviour
             yield return null; 
         }
 
+        // 4. EXPLOSION & BOUNCE EFFECT
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -198,22 +220,31 @@ public partial class BoardManager : MonoBehaviour
                     jelly.transform.name = $"Jelly ({x},{y})";
                     Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
                     
-                    StartCoroutine(AnimateUnmergeAndFly(jelly.transform, targetPos, 0.25f));
+                    float outDelay = Random.Range(0f, 0.1f);
+                    
+                    Vector3 correctScale = originalScales.ContainsKey(jelly.transform) ? originalScales[jelly.transform] : Vector3.one;
+                    
+                    StartCoroutine(PopOutFromCenterRoutine(jelly.transform, centerWorldPos, targetPos, outDelay, correctScale));
                 }
             }
         }
 
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.5f);
 
         IsProcessing = false;
         ResetHintTimer();
     }
 
-    private IEnumerator AnimateUnmergeAndFly(Transform jellyTransform, Vector3 endPos, float duration)
+    // --- NEW JUICY SHUFFLE ANIMATIONS ---
+    private IEnumerator SuckIntoCenterRoutine(Transform jellyTransform, Vector3 center, float delay)
     {
+        yield return new WaitForSeconds(delay);
         if (jellyTransform == null) yield break;
 
         Vector3 startPos = jellyTransform.position;
+        Vector3 startScale = jellyTransform.localScale;
+        
+        float duration = 0.3f;
         float elapsed = 0f;
 
         while (elapsed < duration)
@@ -221,10 +252,14 @@ public partial class BoardManager : MonoBehaviour
             if (jellyTransform == null) yield break;
 
             float t = elapsed / duration;
-            t = Mathf.SmoothStep(0f, 1f, t);
+            // Ease In Cubic (Starts slow, speeds up into the center)
+            float easeT = t * t * t; 
 
-            jellyTransform.position = Vector3.Lerp(startPos, endPos, t);
-            jellyTransform.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, t);
+            // Add a spinning effect as they get sucked in
+            jellyTransform.Rotate(0f, 0f, 15f);
+
+            jellyTransform.position = Vector3.Lerp(startPos, center, easeT);
+            jellyTransform.localScale = Vector3.Lerp(startScale, Vector3.zero, easeT);
 
             elapsed += Time.deltaTime;
             yield return null;
@@ -232,8 +267,42 @@ public partial class BoardManager : MonoBehaviour
 
         if (jellyTransform != null)
         {
-            jellyTransform.position = endPos;
-            jellyTransform.localScale = Vector3.one;
+            jellyTransform.position = center;
+            jellyTransform.localScale = Vector3.zero;
+            jellyTransform.rotation = Quaternion.identity; // Reset rotation
+        }
+    }
+
+   private IEnumerator PopOutFromCenterRoutine(Transform jellyTransform, Vector3 center, Vector3 targetPos, float delay, Vector3 targetScale)
+    {
+        yield return new WaitForSeconds(delay);
+        if (jellyTransform == null) yield break;
+
+        float duration = 0.4f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            if (jellyTransform == null) yield break;
+
+            float t = elapsed / duration;
+            
+            float overshoot = 1.70158f;
+            float p = t - 1f;
+            float easeT = p * p * ((overshoot + 1f) * p + overshoot) + 1f;
+
+            jellyTransform.position = Vector3.LerpUnclamped(center, targetPos, easeT);
+            
+            jellyTransform.localScale = Vector3.LerpUnclamped(Vector3.zero, targetScale, t);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (jellyTransform != null)
+        {
+            jellyTransform.position = targetPos;
+            jellyTransform.localScale = targetScale; 
         }
     }
 }
