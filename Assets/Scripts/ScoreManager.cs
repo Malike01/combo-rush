@@ -9,6 +9,7 @@ public class ScoreManager : MonoBehaviour
     [Header("UI Elements")]
     public TextMeshProUGUI scoreText;   // Text (TMP) inside TopPanel
     public TextMeshProUGUI comboText;   // Text (TMP) inside BottomPanel
+    public TextMeshProUGUI endComboText; // Text (TMP) for the end-of-level summary
 
     [Header("Score Settings")]
     public int baseJellyScore = 100;

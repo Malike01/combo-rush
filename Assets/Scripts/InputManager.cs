@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems; 
 
 public class InputManager : MonoBehaviour
 {
@@ -45,7 +46,7 @@ public class InputManager : MonoBehaviour
             lineRenderer.positionCount = 0;
             lineRenderer.startWidth = lineWidth;
             lineRenderer.endWidth = lineWidth;
-            lineRenderer.sortingOrder = 50;
+            lineRenderer.sortingOrder = 100;
         }
     }
 
@@ -124,6 +125,11 @@ public class InputManager : MonoBehaviour
 
     void HandleInput()
     {
+
+        if (EventSystem.current.IsPointerOverGameObject()) 
+        {
+            return; 
+        }
         if (Input.GetMouseButtonDown(0))
         {
             Jelly startJelly = GetJellyUnderMouse();

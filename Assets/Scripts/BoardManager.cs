@@ -51,13 +51,23 @@ public partial class BoardManager : MonoBehaviour
         }
 
         board = new Jelly[width, height];
-        GenerateBoard();
         ResetHintTimer();
     }
 
-    void GenerateBoard()
+    public void GenerateBoard()
     {
+        if (gridParent != null)
+        {
+            for (int i = gridParent.childCount - 1; i >= 0; i--)
+            {
+                DestroyImmediate(gridParent.GetChild(i).gameObject); 
+            }
+        }
+
+        board = new Jelly[width, height];
+
         CreateBoardBackground();    
+        
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -104,7 +114,7 @@ public partial class BoardManager : MonoBehaviour
         if (sr != null)
         {
             sr.color = new Color(0.08f, 0.09f, 0.22f, 0.65f); 
-            sr.sortingOrder = -5;
+            sr.sortingOrder = 1;
         }
     }
 
@@ -121,7 +131,8 @@ public partial class BoardManager : MonoBehaviour
     {
         int randomIndex = Random.Range(0, jellyThemes.Length);
 
-        GameObject jellyObj = Instantiate(jellyPrefab, spawnPos, Quaternion.identity, transform);
+        Transform parentTransform = gridParent != null ? gridParent : transform;
+        GameObject jellyObj = Instantiate(jellyPrefab, spawnPos, Quaternion.identity, parentTransform);
         jellyObj.name = $"Jelly ({x},{y})";
 
         Jelly jellyScript = jellyObj.GetComponent<Jelly>();
@@ -131,6 +142,14 @@ public partial class BoardManager : MonoBehaviour
             jellyScript.y = y;
             jellyScript.SetupEvolution(jellyThemes[randomIndex].progressionSprites, randomIndex);
             board[x, y] = jellyScript;
+        }
+    }
+
+    public void OnBoardInteractionStart()
+    {
+        if (ComboTimerManager.Instance != null)
+        {
+            ComboTimerManager.Instance.StartOrResetTimer();
         }
     }
 
@@ -146,9 +165,9 @@ public partial class BoardManager : MonoBehaviour
         }
 
         if (ScoreManager.Instance != null) 
-    {
-        ScoreManager.Instance.AddScore(matchedJellies.Count);
-    }
+        {
+            ScoreManager.Instance.AddScore(matchedJellies.Count);
+        }
 
         Vector3 burstPoint = matchedJellies[matchedJellies.Count - 1].transform.position;
         SpriteRenderer sr = matchedJellies[0].GetComponent<SpriteRenderer>();
@@ -218,6 +237,8 @@ public partial class BoardManager : MonoBehaviour
 
     private IEnumerator RefillGridRoutine()
     {
+        Transform parentTransform = gridParent != null ? gridParent : transform;
+
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -228,7 +249,8 @@ public partial class BoardManager : MonoBehaviour
                     Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
 
                     int randomIndex = Random.Range(0, jellyThemes.Length);
-                    GameObject jellyObj = Instantiate(jellyPrefab, spawnAbovePos, Quaternion.identity, transform);
+                    
+                    GameObject jellyObj = Instantiate(jellyPrefab, spawnAbovePos, Quaternion.identity, parentTransform);
                     jellyObj.name = $"Jelly ({x},{y})";
 
                     Jelly jellyScript = jellyObj.GetComponent<Jelly>();

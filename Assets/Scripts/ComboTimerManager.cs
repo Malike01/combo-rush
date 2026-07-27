@@ -74,6 +74,39 @@ public class ComboTimerManager : MonoBehaviour
         }
     }
 
+    public void ResetTimerFull()
+    {
+        StopTimer();
+
+        currentTime = maxTime;
+        isTimerRunning = true; 
+
+        if (timerFillImage != null)
+        {
+            timerFillImage.enabled = true;
+            timerFillImage.fillAmount = 1f;
+            timerFillImage.color = safeColor;
+        }
+
+        if (timerUIRoot != null)
+        {
+            timerUIRoot.localScale = Vector3.one;
+        }
+
+        if (dropletPoint != null)
+        {
+            if (barWidth <= 0 && timerFillImage != null)
+            {
+                barWidth = timerFillImage.rectTransform.rect.width;
+            }
+            dropletPoint.anchoredPosition = new Vector2(barWidth, dropletPoint.anchoredPosition.y);
+        }
+
+        if (dropletParticles != null)
+        {
+            dropletParticles.Stop();
+        }
+    }
     /// <summary>
     /// Starts the timer or adds extra bonus time to the active timer without resetting completely.
     /// </summary>
@@ -170,6 +203,8 @@ public class ComboTimerManager : MonoBehaviour
         {
             timerUIRoot.localScale = Vector3.one;
         }
+
+        FindObjectOfType<LevelEndManager>().ShowLevelEndScreen();
 
         Debug.Log("TIME OVER! GAME OVER.");
     }
