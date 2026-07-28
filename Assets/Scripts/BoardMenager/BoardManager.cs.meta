@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 51c95c34469518d4ab7ec75eb468df0d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - jellyPrefab: {instanceID: 0}
+  - cellPrefab: {fileID: 8296477263083296514, guid: cdcfc6ccdbe35394d9dd8689dde20524, type: 3}
+  - gridParent: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
