@@ -38,20 +38,25 @@ public class ScoreManager : MonoBehaviour
         UpdateUI();
     }
 
-    public void AddScore(int jellyCount)
+    public void AddScore(int totalCoinValue, int coinCount) 
     {
-        if (jellyCount < 3) return;
+        if (coinCount < 4) return; 
 
-        float lengthBonus = 1f + ((jellyCount - 3) * 0.2f);
-        int gainedScore = Mathf.RoundToInt((jellyCount * baseJellyScore) * lengthBonus * currentCombo);
+        float lengthBonus = 1f + ((coinCount - 4) * 0.2f); 
+        
+        int gainedScore = Mathf.RoundToInt(totalCoinValue * lengthBonus * currentCombo);
 
         currentScore += gainedScore;
         currentCombo++;
 
         UpdateUI();
-
-        // Trigger the punch scale animation for the score and combo text
         TriggerPunchAnimation();
+
+        if (LevelManager.Instance != null)
+        {
+            LevelManager.Instance.CheckLevelProgress(currentScore); 
+        }
+    
     }
 
     public void ResetCombo()

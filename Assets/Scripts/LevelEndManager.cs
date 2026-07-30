@@ -17,6 +17,8 @@ public class LevelEndManager : MonoBehaviour
     [Tooltip("Sahnendeki BoardManager (veya grid'i oluşturan) objeyi sürükle")]
     public BoardManager boardManager;
 
+    public LevelData currentLevel;
+
     private void Start()
     {
         if (mapContainer != null)
@@ -51,14 +53,21 @@ public class LevelEndManager : MonoBehaviour
             levelEndPanel.SetActive(false); 
         }
 
-        if (boardManager != null)
+        if (currentLevel != null)
         {
-            boardManager.GenerateBoard(); 
+            boardManager.LoadLevel(currentLevel);
         }
         else
         {
-            var board = FindFirstObjectByType<BoardManager>();
-            if (board != null) board.GenerateBoard();
+            if (boardManager != null)
+            {
+                boardManager.GenerateBoard(); 
+            }
+            else
+            {
+                var board = FindFirstObjectByType<BoardManager>();
+                if (board != null) board.GenerateBoard();
+            }
         }
 
         if (timerManager != null)

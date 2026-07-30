@@ -10,13 +10,13 @@ public partial class BoardManager : MonoBehaviour
 
     public void TriggerGlobalImmortalShake()
     {
-        Jelly[] allJellies = Object.FindObjectsByType<Jelly>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        Coin[] allJellies = Object.FindObjectsByType<Coin>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         
-        foreach (Jelly jelly in allJellies)
+        foreach (Coin coin in allJellies)
         {
-            if (jelly != null && jelly.gameObject != null)
+            if (coin != null && coin.gameObject != null)
             {
-                StartCoroutine(jelly.ShakeJelly());
+                StartCoroutine(coin.ShakeJelly());
             }
         }
     }
@@ -25,7 +25,7 @@ public partial class BoardManager : MonoBehaviour
     {
         if (jellyObj == null) yield break;
 
-        Jelly jellyComponent = jellyObj.GetComponent<Jelly>();
+        Coin jellyComponent = jellyObj.GetComponent<Coin>();
         if (jellyComponent != null) jellyComponent.enabled = false;
 
         yield return new WaitForSeconds(delay); 
@@ -107,7 +107,7 @@ public partial class BoardManager : MonoBehaviour
 
     public void CheckForPossibleMoves()
     {
-        List<Jelly> bestGroup = FindLargestConnectedGroup();
+        List<Coin> bestGroup = FindLargestConnectedGroup();
 
         if (bestGroup == null || bestGroup.Count < 4)
         {
@@ -125,7 +125,7 @@ public partial class BoardManager : MonoBehaviour
         TriggerGlobalImmortalShake();
         yield return new WaitForSeconds(0.4f);
 
-        List<Jelly> allJellies = new List<Jelly>();
+        List<Coin> allJellies = new List<Coin>();
         
         Dictionary<Transform, Vector3> originalScales = new Dictionary<Transform, Vector3>();
 
@@ -133,13 +133,14 @@ public partial class BoardManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
+                if (activeCells != null && !activeCells[x, y]) continue;
                 if (board[x, y] != null && board[x, y].gameObject != null)
                 {
-                    Jelly j = board[x, y];
-                    allJellies.Add(j);
+                    Coin coin = board[x, y];
+                    allJellies.Add(coin);
                     
                     // Jölenin gerçek boyutunu hafızaya alıyoruz
-                    originalScales[j.transform] = j.transform.localScale;
+                    originalScales[coin.transform] = coin.transform.localScale;
                 }
                 else
                 {
@@ -151,12 +152,12 @@ public partial class BoardManager : MonoBehaviour
         Vector3 centerWorldPos = GetWorldPosition((width - 1) / 2f, (height - 1) / 2f);
 
         // 2. BLACK HOLE EFFECT
-        foreach (Jelly jelly in allJellies)
+        foreach (Coin coin in allJellies)
         {
-            if (jelly != null && jelly.gameObject != null)
+            if (coin != null && coin.gameObject != null)
             {
                 float randomDelay = Random.Range(0f, 0.15f); 
-                StartCoroutine(SuckIntoCenterRoutine(jelly.transform, centerWorldPos, randomDelay));
+                StartCoroutine(SuckIntoCenterRoutine(coin.transform, centerWorldPos, randomDelay));
             }
         }
 
@@ -182,7 +183,7 @@ public partial class BoardManager : MonoBehaviour
 
             for (int i = 0; i < allJellies.Count; i++)
             {
-                Jelly temp = allJellies[i];
+                Coin temp = allJellies[i];
                 int randomIndex = Random.Range(i, allJellies.Count);
                 allJellies[i] = allJellies[randomIndex];
                 allJellies[randomIndex] = temp;
@@ -193,9 +194,10 @@ public partial class BoardManager : MonoBehaviour
             {
                 for (int y = 0; y < height; y++)
                 {
+                    if (activeCells != null && !activeCells[x, y]) continue;
                     if (index < allJellies.Count)
                     {
-                        Jelly j = allJellies[index];
+                        Coin j = allJellies[index];
                         if (j != null && j.gameObject != null)
                         {
                             board[x, y] = j;
@@ -207,7 +209,7 @@ public partial class BoardManager : MonoBehaviour
                 }
             }
 
-            List<Jelly> testGroup = FindLargestConnectedGroup();
+            List<Coin> testGroup = FindLargestConnectedGroup();
             if (testGroup != null && testGroup.Count >= 4)
             {
                 validBoardFound = true;
@@ -221,17 +223,18 @@ public partial class BoardManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                Jelly jelly = board[x, y];
-                if (jelly != null && jelly.gameObject != null)
+                Coin coin = board[x, y];
+                if (activeCells != null && !activeCells[x, y]) continue;
+                if (coin != null && coin.gameObject != null)
                 {
-                    jelly.transform.name = $"Jelly ({x},{y})";
+                    coin.transform.name = $"Coin ({x},{y})";
                     Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
                     
                     float outDelay = Random.Range(0f, 0.1f);
                     
-                    Vector3 correctScale = originalScales.ContainsKey(jelly.transform) ? originalScales[jelly.transform] : Vector3.one;
+                    Vector3 correctScale = originalScales.ContainsKey(coin.transform) ? originalScales[coin.transform] : Vector3.one;
                     
-                    StartCoroutine(PopOutFromCenterRoutine(jelly.transform, centerWorldPos, targetPos, outDelay, correctScale));
+                    StartCoroutine(PopOutFromCenterRoutine(coin.transform, centerWorldPos, targetPos, outDelay, correctScale));
                 }
             }
         }
@@ -243,54 +246,54 @@ public partial class BoardManager : MonoBehaviour
     }
 
     // --- NEW JUICY SHUFFLE ANIMATIONS ---
-    private IEnumerator SuckIntoCenterRoutine(Transform jellyTransform, Vector3 center, float delay)
+    private IEnumerator SuckIntoCenterRoutine(Transform coinTransform, Vector3 center, float delay)
     {
         yield return new WaitForSeconds(delay);
-        if (jellyTransform == null) yield break;
+        if (coinTransform == null) yield break;
 
-        Vector3 startPos = jellyTransform.position;
-        Vector3 startScale = jellyTransform.localScale;
+        Vector3 startPos = coinTransform.position;
+        Vector3 startScale = coinTransform.localScale;
         
         float duration = 0.3f;
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
-            if (jellyTransform == null) yield break;
+            if (coinTransform == null) yield break;
 
             float t = elapsed / duration;
             // Ease In Cubic (Starts slow, speeds up into the center)
             float easeT = t * t * t; 
 
             // Add a spinning effect as they get sucked in
-            jellyTransform.Rotate(0f, 0f, 15f);
+            coinTransform.Rotate(0f, 0f, 15f);
 
-            jellyTransform.position = Vector3.Lerp(startPos, center, easeT);
-            jellyTransform.localScale = Vector3.Lerp(startScale, Vector3.zero, easeT);
+            coinTransform.position = Vector3.Lerp(startPos, center, easeT);
+            coinTransform.localScale = Vector3.Lerp(startScale, Vector3.zero, easeT);
 
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        if (jellyTransform != null)
+        if (coinTransform != null)
         {
-            jellyTransform.position = center;
-            jellyTransform.localScale = Vector3.zero;
-            jellyTransform.rotation = Quaternion.identity; // Reset rotation
+            coinTransform.position = center;
+            coinTransform.localScale = Vector3.zero;
+            coinTransform.rotation = Quaternion.identity; // Reset rotation
         }
     }
 
-   private IEnumerator PopOutFromCenterRoutine(Transform jellyTransform, Vector3 center, Vector3 targetPos, float delay, Vector3 targetScale)
+   private IEnumerator PopOutFromCenterRoutine(Transform coinTransform, Vector3 center, Vector3 targetPos, float delay, Vector3 targetScale)
     {
         yield return new WaitForSeconds(delay);
-        if (jellyTransform == null) yield break;
+        if (coinTransform == null) yield break;
 
         float duration = 0.4f;
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
-            if (jellyTransform == null) yield break;
+            if (coinTransform == null) yield break;
 
             float t = elapsed / duration;
             
@@ -298,18 +301,18 @@ public partial class BoardManager : MonoBehaviour
             float p = t - 1f;
             float easeT = p * p * ((overshoot + 1f) * p + overshoot) + 1f;
 
-            jellyTransform.position = Vector3.LerpUnclamped(center, targetPos, easeT);
+            coinTransform.position = Vector3.LerpUnclamped(center, targetPos, easeT);
             
-            jellyTransform.localScale = Vector3.LerpUnclamped(Vector3.zero, targetScale, t);
+            coinTransform.localScale = Vector3.LerpUnclamped(Vector3.zero, targetScale, t);
 
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        if (jellyTransform != null)
+        if (coinTransform != null)
         {
-            jellyTransform.position = targetPos;
-            jellyTransform.localScale = targetScale; 
+            coinTransform.position = targetPos;
+            coinTransform.localScale = targetScale; 
         }
     }
 }

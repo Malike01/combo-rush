@@ -17,8 +17,12 @@ public partial class BoardManager : MonoBehaviour
     public int height = 8;
     public float spacing = 1.2f;
 
+    [Header("Level Data")]
+    public LevelData currentLevel;
+    public bool[,] activeCells;
+
     [Header("References")]
-    public GameObject jellyPrefab;
+    public GameObject coinPrefab;
 
     [Header("Jelly Evolutions")]
     public JellyTheme[] jellyThemes;
@@ -32,7 +36,7 @@ public partial class BoardManager : MonoBehaviour
     public Color lightCellColor = new Color(1f, 1f, 1f, 0.25f);
     public Color darkCellColor  = new Color(1f, 1f, 1f, 0.12f);
 
-    private Jelly[,] board;
+    private Coin[,] board;
     public bool IsProcessing { get; private set; } = false;
 
     public static BoardManager Instance;
@@ -44,18 +48,37 @@ public partial class BoardManager : MonoBehaviour
 
     void Start()
     {
-        if (jellyPrefab == null || jellyThemes == null || jellyThemes.Length == 0)
+        if (coinPrefab == null || jellyThemes == null || jellyThemes.Length == 0)
         {
-            Debug.LogError("BoardManager: Missing Prefab or Jelly Themes array!");
+            Debug.LogError("BoardManager: Missing Prefab or Coin Themes array!");
             return;
         }
 
-        board = new Jelly[width, height];
+        board = new Coin[width, height];
+
         ResetHintTimer();
     }
 
-    public void GenerateBoard()
+    public void LoadLevel(LevelData level)
     {
+        currentLevel = level;
+        width = level.gridWidth;
+        height = level.gridHeight;
+
+        ParseGridLayout();
+        GenerateBoard();
+    }
+
+
+   public void GenerateBoard()
+    {
+        if (currentLevel != null)
+        {
+            width = currentLevel.gridWidth;
+            height = currentLevel.gridHeight;
+            ParseGridLayout(); 
+        }
+
         if (gridParent != null)
         {
             for (int i = gridParent.childCount - 1; i >= 0; i--)
@@ -64,14 +87,14 @@ public partial class BoardManager : MonoBehaviour
             }
         }
 
-        board = new Jelly[width, height];
-
-        CreateBoardBackground();    
+        board = new Coin[width, height]; 
         
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
+                if (activeCells != null && !activeCells[x, y]) continue;
+
                 Vector2 pos = GetWorldPosition(x, y);
 
                 if (cellPrefab != null)
@@ -95,6 +118,37 @@ public partial class BoardManager : MonoBehaviour
         }
     }
 
+    private void ParseGridLayout()
+    {
+        activeCells = new bool[width, height];
+
+        if (currentLevel == null || string.IsNullOrWhiteSpace(currentLevel.gridLayout))
+        {
+            for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
+                    activeCells[x, y] = true;
+            return;
+        }
+
+        string cleanLayout = currentLevel.gridLayout.Replace("\n", "").Replace("\r", "").Replace(" ", "");
+
+        int charIndex = 0;
+        for (int y = height - 1; y >= 0; y--)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (charIndex < cleanLayout.Length)
+                {
+                    activeCells[x, y] = (cleanLayout[charIndex] == '1');
+                    charIndex++;
+                }
+                else
+                {
+                    activeCells[x, y] = false; 
+                }
+            }
+        }
+    }
     void CreateBoardBackground()
     {
         if (boardBackgroundPrefab == null) return;
@@ -132,16 +186,16 @@ public partial class BoardManager : MonoBehaviour
         int randomIndex = Random.Range(0, jellyThemes.Length);
 
         Transform parentTransform = gridParent != null ? gridParent : transform;
-        GameObject jellyObj = Instantiate(jellyPrefab, spawnPos, Quaternion.identity, parentTransform);
-        jellyObj.name = $"Jelly ({x},{y})";
+        GameObject coinObj = Instantiate(coinPrefab, spawnPos, Quaternion.identity, parentTransform);
+        coinObj.name = $"Coin ({x},{y})";
 
-        Jelly jellyScript = jellyObj.GetComponent<Jelly>();
-        if (jellyScript != null)
+        Coin coinScript = coinObj.GetComponent<Coin>();
+        if (coinScript != null)
         {
-            jellyScript.x = x;
-            jellyScript.y = y;
-            jellyScript.SetupEvolution(jellyThemes[randomIndex].progressionSprites, randomIndex);
-            board[x, y] = jellyScript;
+            coinScript.x = x;
+            coinScript.y = y;
+            coinScript.SetupCoin(jellyThemes[randomIndex].progressionSprites[0], randomIndex, 10);
+            board[x, y] = coinScript;
         }
     }
 
@@ -153,9 +207,9 @@ public partial class BoardManager : MonoBehaviour
         }
     }
 
-    public void ProcessMatches(List<Jelly> matchedJellies)
+    public void ProcessMatches(List<Coin> matchedCoins)
     {
-        if (matchedJellies == null || matchedJellies.Count == 0) return;
+        if (matchedCoins == null || matchedCoins.Count == 0) return;
 
         ResetHintTimer();
 
@@ -164,35 +218,41 @@ public partial class BoardManager : MonoBehaviour
             ComboTimerManager.Instance.StartOrResetTimer();
         }
 
-        if (ScoreManager.Instance != null) 
+      if (ScoreManager.Instance != null) 
         {
-            ScoreManager.Instance.AddScore(matchedJellies.Count);
+            int totalMatchValue = 0;
+            foreach (Coin coin in matchedCoins) 
+            {
+                totalMatchValue += coin.pointValue;
+            }
+
+            ScoreManager.Instance.AddScore(totalMatchValue, matchedCoins.Count);
         }
 
-        Vector3 burstPoint = matchedJellies[matchedJellies.Count - 1].transform.position;
-        SpriteRenderer sr = matchedJellies[0].GetComponent<SpriteRenderer>();
+        Vector3 burstPoint = matchedCoins[matchedCoins.Count - 1].transform.position;
+        SpriteRenderer sr = matchedCoins[0].GetComponent<SpriteRenderer>();
         Color burstColor = sr != null ? sr.color : Color.white;
 
         if (ParticleFXManager.Instance != null)
         {
-            ParticleFXManager.Instance.PlayBurst(burstPoint, burstColor, matchedJellies.Count);
+            ParticleFXManager.Instance.PlayBurst(burstPoint, burstColor, matchedCoins.Count);
         }
 
-        StartCoroutine(ProcessMatchesRoutine(matchedJellies));
+        StartCoroutine(ProcessMatchesRoutine(matchedCoins));
     }
 
-    private IEnumerator ProcessMatchesRoutine(List<Jelly> matchedJellies)
+    private IEnumerator ProcessMatchesRoutine(List<Coin> matchedCoins)
     {
         IsProcessing = true;
 
-        for (int i = 0; i < matchedJellies.Count; i++)
+        for (int i = 0; i < matchedCoins.Count; i++)
         {
-            Jelly jelly = matchedJellies[i];
-            if (jelly != null)
+            Coin coin = matchedCoins[i];
+            if (coin != null)
             {
-                board[jelly.x, jelly.y] = null;
-                jelly.transform.SetParent(null);
-                StartCoroutine(FlyJellyToUI(jelly.gameObject, i * 0.08f));
+                board[coin.x, coin.y] = null;
+                coin.transform.SetParent(null);
+                StartCoroutine(FlyJellyToUI(coin.gameObject, i * 0.08f));
             }
         }
 
@@ -210,22 +270,25 @@ public partial class BoardManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
+                if (activeCells != null && !activeCells[x, y]) continue;
+
                 if (board[x, y] == null)
                 {
                     for (int aboveY = y + 1; aboveY < height; aboveY++)
                     {
+                        if (activeCells != null && !activeCells[x, y]) continue;
                         if (board[x, aboveY] != null)
                         {
-                            Jelly movingJelly = board[x, aboveY];
-                            board[x, y] = movingJelly;
+                            Coin movingCoins = board[x, aboveY];
+                            board[x, y] = movingCoins;
                             board[x, aboveY] = null;
 
-                            movingJelly.x = x;
-                            movingJelly.y = y;
-                            movingJelly.transform.name = $"Jelly ({x},{y})";
+                            movingCoins.x = x;
+                            movingCoins.y = y;
+                            movingCoins.transform.name = $"Coin ({x},{y})";
 
                             Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
-                            StartCoroutine(SmoothMove(movingJelly.transform, targetPos, 0.15f));
+                            StartCoroutine(SmoothMove(movingCoins.transform, targetPos, 0.15f));
                             break;
                         }
                     }
@@ -243,6 +306,8 @@ public partial class BoardManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
+                if (activeCells != null && !activeCells[x, y]) continue;
+
                 if (board[x, y] == null)
                 {
                     Vector3 spawnAbovePos = new Vector3(GetWorldPosition(x, height).x, GetWorldPosition(x, height).y, -1f); 
@@ -250,18 +315,18 @@ public partial class BoardManager : MonoBehaviour
 
                     int randomIndex = Random.Range(0, jellyThemes.Length);
                     
-                    GameObject jellyObj = Instantiate(jellyPrefab, spawnAbovePos, Quaternion.identity, parentTransform);
-                    jellyObj.name = $"Jelly ({x},{y})";
+                    GameObject coinObj = Instantiate(coinPrefab, spawnAbovePos, Quaternion.identity, parentTransform);
+                    coinObj.name = $"Coin ({x},{y})";
 
-                    Jelly jellyScript = jellyObj.GetComponent<Jelly>();
-                    if (jellyScript != null)
+                    Coin coinScript = coinObj.GetComponent<Coin>();
+                    if (coinScript != null)
                     {
-                        jellyScript.x = x;
-                        jellyScript.y = y;
-                        jellyScript.SetupEvolution(jellyThemes[randomIndex].progressionSprites, randomIndex);
-                        board[x, y] = jellyScript;
+                        coinScript.x = x;
+                        coinScript.y = y;
+                        coinScript.SetupCoin(jellyThemes[randomIndex].progressionSprites[0], randomIndex, 10);
+                        board[x, y] = coinScript;
 
-                        StartCoroutine(SmoothMove(jellyObj.transform, targetPos, 0.2f));
+                        StartCoroutine(SmoothMove(coinObj.transform, targetPos, 0.2f));
                     }
                 }
             }

@@ -1,19 +1,19 @@
 using System.Collections;
 using UnityEngine;
 
-public class Jelly : MonoBehaviour
+public class Coin : MonoBehaviour
 {
     [Header("Grid Coordinates")]
     public int x;
     public int y;
 
-    [Header("Color Index")]
+    [Header("Coin Data")]
     public int colorIndex;
+    public int pointValue; // YENİ: GDD v3'e göre coin'in taşıdığı puan (5, 10, 15, 20)
     
     // Shortcut for BoardManager algorithms to access color seamlessly
     public int themeIndex => colorIndex; 
 
-    private Sprite[] evolutionSprites;
     private SpriteRenderer spriteRenderer;
     
     // Store the initial scale reference safely
@@ -46,33 +46,19 @@ public class Jelly : MonoBehaviour
         }
     }
 
-    public void SetupEvolution(Sprite[] sprites, int index)
+    // YENİ: Tek bir Sprite ve Puan alarak kurulum yapar
+    public void SetupCoin(Sprite sprite, int index, int points)
     {
         InitScale();
-        evolutionSprites = sprites;
         colorIndex = index;
+        pointValue = points; // Puanı atıyoruz
 
         if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
 
-        if (sprites != null && sprites.Length > 0)
+        if (sprite != null)
         {
-            spriteRenderer.sprite = sprites[0];
+            spriteRenderer.sprite = sprite;
         }
-    }
-
-    public void UpdateExpression(int comboCount)
-    {
-        if (evolutionSprites == null || evolutionSprites.Length == 0) return;
-
-        int targetIndex = Mathf.Clamp(comboCount, 0, evolutionSprites.Length - 1);
-        Sprite targetSprite = evolutionSprites[targetIndex];
-
-        if (spriteRenderer.sprite != targetSprite)
-        {
-            spriteRenderer.sprite = targetSprite;
-        }
-
-        TriggerSquishImpact();
     }
 
     public void SelectSquish()
@@ -119,11 +105,6 @@ public class Jelly : MonoBehaviour
         StopIdleWiggle();
 
         if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
-
-        if (evolutionSprites != null && evolutionSprites.Length > 0)
-        {
-            if (spriteRenderer != null) spriteRenderer.sprite = evolutionSprites[0];
-        }
 
         activeScaleRoutine = StartCoroutine(AnimateReturnToOriginal(0.1f));
     }

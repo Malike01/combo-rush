@@ -5,7 +5,7 @@ using UnityEngine;
 public partial class BoardManager : MonoBehaviour
 {
     private Coroutine hintTimerCoroutine;
-    private List<Jelly> currentHintJellies = new List<Jelly>();
+    private List<Coin> currentHintJellies = new List<Coin>();
     private bool isHintActive = false;
 
     private void Update()
@@ -41,18 +41,18 @@ public partial class BoardManager : MonoBehaviour
     {
         if (IsProcessing) return;
 
-        List<Jelly> bestGroup = FindLargestConnectedGroup();
+        List<Coin> bestGroup = FindLargestConnectedGroup();
 
         if (bestGroup != null && bestGroup.Count >= 4)
         {
             currentHintJellies = bestGroup;
             isHintActive = true;
 
-            foreach (Jelly jelly in currentHintJellies)
+            foreach (Coin coin in currentHintJellies)
             {
-                if (jelly != null)
+                if (coin != null && coin.gameObject != null)
                 {
-                    jelly.StartIdleWiggle(); 
+                    coin.StartIdleWiggle(); 
                 }
             }
         }
@@ -76,9 +76,9 @@ public partial class BoardManager : MonoBehaviour
         currentHintJellies.Clear();
     }
 
-    private List<Jelly> FindLargestConnectedGroup()
+    private List<Coin> FindLargestConnectedGroup()
     {
-        List<Jelly> bestPath = new List<Jelly>();
+        List<Coin> bestPath = new List<Coin>();
       
         int maxPathSearchCap = 12; 
 
@@ -88,7 +88,7 @@ public partial class BoardManager : MonoBehaviour
             {
                 if (board[x, y] != null)
                 {
-                    List<Jelly> currentPath = new List<Jelly>();
+                    List<Coin> currentPath = new List<Coin>();
                     bool[,] visited = new bool[width, height];
                     
                     DFS_LongestPath(x, y, board[x, y].colorIndex, currentPath, visited, ref bestPath, maxPathSearchCap);
@@ -102,7 +102,7 @@ public partial class BoardManager : MonoBehaviour
         return bestPath; 
     }
 
-    private void DFS_LongestPath(int x, int y, int targetTheme, List<Jelly> currentPath, bool[,] visited, ref List<Jelly> bestPath, int maxCap)
+    private void DFS_LongestPath(int x, int y, int targetTheme, List<Coin> currentPath, bool[,] visited, ref List<Coin> bestPath, int maxCap)
     {
         if (bestPath.Count >= maxCap || currentPath.Count >= maxCap) return;
 
@@ -111,7 +111,7 @@ public partial class BoardManager : MonoBehaviour
 
         if (currentPath.Count > bestPath.Count)
         {
-            bestPath = new List<Jelly>(currentPath);
+            bestPath = new List<Coin>(currentPath);
         }
 
         Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
