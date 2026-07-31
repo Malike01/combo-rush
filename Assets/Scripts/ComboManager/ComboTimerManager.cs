@@ -31,7 +31,6 @@ public class ComboTimerManager : MonoBehaviour
     public RectTransform dropletPoint;
     public ParticleSystem dropletParticles;
     private float barWidth;
-
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -204,7 +203,10 @@ public class ComboTimerManager : MonoBehaviour
             timerUIRoot.localScale = Vector3.one;
         }
 
-        FindObjectOfType<LevelEndManager>().ShowLevelEndScreen();
+       if (LevelEndManager.Instance != null)
+       {
+          LevelEndManager.Instance.ShowLevelEndScreen();
+       }
 
         Debug.Log("TIME OVER! GAME OVER.");
     }

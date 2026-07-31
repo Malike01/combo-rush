@@ -2,12 +2,23 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// Defines the visual themes for the coins (colors)
 [System.Serializable]
 public struct JellyTheme
 {
     public string themeName; 
-    [Tooltip("0: Default, 1: Combo 1, 2: Combo 2...")]
+    [Tooltip("Index Maps -> 0: 5, 1: 10, 2: 15, 3: 20, 4: 25(Ultra), 5: Mystery(?)")]
     public Sprite[] progressionSprites; 
+}
+
+// Defines the logic, point values, and drop rates for each coin type within a theme
+[System.Serializable]
+public struct CoinDropData
+{
+    public string dropName;      // Identifier for the Inspector (e.g., "Normal 5", "Ultra 25")
+    public int pointValue;       // The actual score value of the coin (5, 10, 15, 20, 25, 0 for Mystery)
+    public int spriteIndex;      // Which sprite index to use from the JellyTheme's progressionSprites array
+    public float dropWeight;     // The probability weight (higher = more frequent)
 }
 
 public partial class BoardManager : MonoBehaviour
@@ -24,8 +35,10 @@ public partial class BoardManager : MonoBehaviour
     [Header("References")]
     public GameObject coinPrefab;
 
-    [Header("Jelly Evolutions")]
+    [Header("Jelly Themes & Drop Rates")]
     public JellyTheme[] jellyThemes;
+    [Tooltip("Define the probabilities and values for 5, 10, 15, 20, 25(Ultra) and ?(Mystery)")]
+    public CoinDropData[] coinDropSettings; 
 
     [Header("Grid Visuals")]
     public GameObject cellPrefab;
@@ -43,15 +56,22 @@ public partial class BoardManager : MonoBehaviour
 
     private void Awake()
     {
+        // Singleton pattern implementation
         if (Instance == null) Instance = this;
     }
 
     void Start()
     {
+        // Null checks for crucial references before starting
         if (coinPrefab == null || jellyThemes == null || jellyThemes.Length == 0)
         {
             Debug.LogError("BoardManager: Missing Prefab or Coin Themes array!");
             return;
+        }
+        
+        if (coinDropSettings == null || coinDropSettings.Length == 0)
+        {
+            Debug.LogWarning("BoardManager: Coin Drop Settings are not assigned in the Inspector!");
         }
 
         board = new Coin[width, height];
@@ -69,7 +89,6 @@ public partial class BoardManager : MonoBehaviour
         GenerateBoard();
     }
 
-
    public void GenerateBoard()
     {
         if (currentLevel != null)
@@ -79,6 +98,7 @@ public partial class BoardManager : MonoBehaviour
             ParseGridLayout(); 
         }
 
+        // Clear existing cells and coins before generating a new board
         if (gridParent != null)
         {
             for (int i = gridParent.childCount - 1; i >= 0; i--)
@@ -88,15 +108,19 @@ public partial class BoardManager : MonoBehaviour
         }
 
         board = new Coin[width, height]; 
+
+        CreateBoardBackground();   
         
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
+                // Skip inactive cells based on level design
                 if (activeCells != null && !activeCells[x, y]) continue;
 
                 Vector2 pos = GetWorldPosition(x, y);
 
+                // Generate background visual cell
                 if (cellPrefab != null)
                 {
                     Vector3 bgPos = new Vector3(pos.x, pos.y, 0.1f);
@@ -113,6 +137,7 @@ public partial class BoardManager : MonoBehaviour
                     }
                 }
 
+                // Generate the actual coin (Jelly)
                 SpawnJellyAt(x, y, new Vector3(pos.x, pos.y, -1f));
             }
         }
@@ -122,6 +147,7 @@ public partial class BoardManager : MonoBehaviour
     {
         activeCells = new bool[width, height];
 
+        // If no layout is provided, make all cells active (rectangular grid)
         if (currentLevel == null || string.IsNullOrWhiteSpace(currentLevel.gridLayout))
         {
             for (int x = 0; x < width; x++)
@@ -149,6 +175,7 @@ public partial class BoardManager : MonoBehaviour
             }
         }
     }
+    
     void CreateBoardBackground()
     {
         if (boardBackgroundPrefab == null) return;
@@ -167,7 +194,7 @@ public partial class BoardManager : MonoBehaviour
         SpriteRenderer sr = bgObj.GetComponent<SpriteRenderer>();
         if (sr != null)
         {
-            sr.color = new Color(0.08f, 0.09f, 0.22f, 0.65f); 
+            sr.color = new Color(1f, 1f, 1f, 0.15f);
             sr.sortingOrder = 1;
         }
     }
@@ -181,9 +208,57 @@ public partial class BoardManager : MonoBehaviour
         return new Vector3(localX + parentPos.x, localY + parentPos.y, 0f);
     }
 
+    // Determines the drop type based on the assigned weights in the Inspector
+    private CoinDropData GetRandomCoinDropData()
+    {
+        if (coinDropSettings == null || coinDropSettings.Length == 0)
+        {
+            // Fallback in case settings are missing
+            return new CoinDropData { pointValue = 10, spriteIndex = 0, dropWeight = 1f };
+        }
+
+        float totalWeight = 0f;
+        foreach (var drop in coinDropSettings)
+        {
+            totalWeight += drop.dropWeight;
+        }
+
+        float randomVal = Random.Range(0f, totalWeight);
+        float currentWeight = 0f;
+
+        foreach (var drop in coinDropSettings)
+        {
+            currentWeight += drop.dropWeight;
+            if (randomVal <= currentWeight)
+            {
+                return drop;
+            }
+        }
+
+        // Failsafe
+        return coinDropSettings[0];
+    }
+
+    // YENI EKLENEN FONKSIYON: Mystery Jetonlarin Puanini Rastgele Belirler
+    private int CalculateFinalPointValue(int initialValue)
+    {
+        // Eger Inspector'dan puan 0 (Mystery) ayarlandiysa, icerisine rastgele gercek bir puan ata
+        if (initialValue == 0)
+        {
+            int[] mysteryValues = new int[] { 5, 10, 15, 20 };
+            return mysteryValues[Random.Range(0, mysteryValues.Length)];
+        }
+        
+        return initialValue; // Degilse kendi orjinal puanini dondur
+    }
+
     void SpawnJellyAt(int x, int y, Vector3 spawnPos)
     {
-        int randomIndex = Random.Range(0, jellyThemes.Length);
+        // 1. Pick a random color theme
+        int randomThemeIndex = Random.Range(0, jellyThemes.Length);
+        
+        // 2. Pick a random type/value based on weights
+        CoinDropData dropData = GetRandomCoinDropData();
 
         Transform parentTransform = gridParent != null ? gridParent : transform;
         GameObject coinObj = Instantiate(coinPrefab, spawnPos, Quaternion.identity, parentTransform);
@@ -194,7 +269,19 @@ public partial class BoardManager : MonoBehaviour
         {
             coinScript.x = x;
             coinScript.y = y;
-            coinScript.SetupCoin(jellyThemes[randomIndex].progressionSprites[0], randomIndex, 10);
+
+            Sprite selectedSprite = null;
+            // Ensure the sprite index exists in the current theme's array to prevent OutOfBounds errors
+            if (dropData.spriteIndex < jellyThemes[randomThemeIndex].progressionSprites.Length)
+            {
+                selectedSprite = jellyThemes[randomThemeIndex].progressionSprites[dropData.spriteIndex];
+            }
+
+            // Puan hesaplamasindan gecir (Mystery ise rastgele 5, 10, 15, 20 atar)
+            int finalValue = CalculateFinalPointValue(dropData.pointValue);
+
+            // Assign the correct sprite, color index, and calculated point value
+            coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue);
             board[x, y] = coinScript;
         }
     }
@@ -218,7 +305,7 @@ public partial class BoardManager : MonoBehaviour
             ComboTimerManager.Instance.StartOrResetTimer();
         }
 
-      if (ScoreManager.Instance != null) 
+        if (ScoreManager.Instance != null) 
         {
             int totalMatchValue = 0;
             foreach (Coin coin in matchedCoins) 
@@ -313,7 +400,11 @@ public partial class BoardManager : MonoBehaviour
                     Vector3 spawnAbovePos = new Vector3(GetWorldPosition(x, height).x, GetWorldPosition(x, height).y, -1f); 
                     Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
 
-                    int randomIndex = Random.Range(0, jellyThemes.Length);
+                    // 1. Pick random color
+                    int randomThemeIndex = Random.Range(0, jellyThemes.Length);
+                    
+                    // 2. Pick random type/value based on weights
+                    CoinDropData dropData = GetRandomCoinDropData();
                     
                     GameObject coinObj = Instantiate(coinPrefab, spawnAbovePos, Quaternion.identity, parentTransform);
                     coinObj.name = $"Coin ({x},{y})";
@@ -323,7 +414,18 @@ public partial class BoardManager : MonoBehaviour
                     {
                         coinScript.x = x;
                         coinScript.y = y;
-                        coinScript.SetupCoin(jellyThemes[randomIndex].progressionSprites[0], randomIndex, 10);
+
+                        Sprite selectedSprite = null;
+                        if (dropData.spriteIndex < jellyThemes[randomThemeIndex].progressionSprites.Length)
+                        {
+                            selectedSprite = jellyThemes[randomThemeIndex].progressionSprites[dropData.spriteIndex];
+                        }
+
+                        // Puan hesaplamasindan gecir (Mystery ise rastgele atar)
+                        int finalValue = CalculateFinalPointValue(dropData.pointValue);
+
+                        // Set the specific data for the spawned coin
+                        coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue);
                         board[x, y] = coinScript;
 
                         StartCoroutine(SmoothMove(coinObj.transform, targetPos, 0.2f));

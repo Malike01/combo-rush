@@ -10,6 +10,7 @@ public class MainMenuManager : MonoBehaviour
     [Header("Oyun İçi Arayüzler")]
     public GameObject timerRoot;
     public GameObject bottomPanel;
+    public GameObject gridParent; 
 
     [Header("Hesap Durumu")]
 
@@ -23,6 +24,7 @@ public class MainMenuManager : MonoBehaviour
         
         if (timerRoot != null) timerRoot.SetActive(false);
         if (bottomPanel != null) bottomPanel.SetActive(false);
+        if (gridParent != null) gridParent.SetActive(false);
     }
 
     public void OnClickPlay()
@@ -63,6 +65,7 @@ public class MainMenuManager : MonoBehaviour
 
         if (timerRoot != null) timerRoot.SetActive(true);
         if (bottomPanel != null) bottomPanel.SetActive(true);
+        if (gridParent != null) gridParent.SetActive(true);
 
         if (BoardManager.Instance != null)
         {

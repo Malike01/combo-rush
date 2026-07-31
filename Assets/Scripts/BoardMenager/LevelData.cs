@@ -4,8 +4,7 @@ using UnityEngine;
 public class LevelData : ScriptableObject
 {
     [Header("Seviye Temel Bilgileri")]
-    public int levelNumber = 1;
-    public int targetScore = 1000; 
+    public int levelNumber;
 
     [Header("Grid Boyutları")]
     public int gridWidth = 6;
@@ -15,4 +14,8 @@ public class LevelData : ScriptableObject
     [Tooltip("1: Hücre var (Coin düşer), 0: Hücre yok (Boşluk/Engel). Aşağıdan yukarıya doğru çalışır.")]
     [TextArea(3, 15)]
     public string gridLayout; 
+
+    [Header("Win Conditions (Kazanma Koşulları)")]
+    public int targetScore;
+    public int targetCombo;
 }
