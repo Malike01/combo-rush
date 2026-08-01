@@ -47,12 +47,37 @@ public class LevelManager : MonoBehaviour
         currentLevelIndex = index;
         LevelData levelToLoad = allLevels[currentLevelIndex];
 
-        // UI Güncellemesi
-        if(currentLevelText != null)
-            currentLevelText.text = "Level " + levelToLoad.levelNumber;
+        UpdateLevelDisplay(levelToLoad);
 
         // Tahtayı yeni bölüme göre sıfırla ve çiz
         boardManager.LoadLevel(levelToLoad);
+    }
+
+    public void SetCurrentLevel(LevelData level)
+    {
+        if (level == null) return;
+
+        int index = allLevels.FindIndex(item => item == level);
+        if (index >= 0)
+        {
+            currentLevelIndex = index;
+        }
+
+        UpdateLevelDisplay(level);
+    }
+
+    public void UpdateLevelDisplay(LevelData level = null)
+    {
+        LevelData targetLevel = level != null ? level : (currentLevelIndex >= 0 && currentLevelIndex < allLevels.Count ? allLevels[currentLevelIndex] : null);
+
+        if (currentLevelText != null && targetLevel != null)
+        {
+            currentLevelText.text = "Level " + targetLevel.levelNumber;
+        }
+        else if (currentLevelText != null)
+        {
+            currentLevelText.text = "Level 1";
+        }
     }
 
     // Puan kazanıldığında bu fonksiyon çağrılacak

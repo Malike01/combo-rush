@@ -46,6 +46,8 @@ public partial class BoardManager : MonoBehaviour
         float elapsed = 0f;
         Vector3 startScale = jellyObj.transform.localScale;
 
+        StartCoroutine(PulseComboTargetsRoutine(duration));
+
         while (elapsed < duration)
         {
             float t = elapsed / duration;
@@ -68,6 +70,88 @@ public partial class BoardManager : MonoBehaviour
 
         Destroy(jellyObj); 
         TriggerComboBarImpact();
+    }
+
+    private IEnumerator PulseComboTargetsRoutine(float duration)
+    {
+        List<Transform> targets = new List<Transform>();
+
+        if (comboBarTarget != null)
+        {
+            targets.Add(comboBarTarget);
+        }
+
+        if (ScoreManager.Instance != null)
+        {
+            if (ScoreManager.Instance.scoreText != null)
+            {
+                targets.Add(ScoreManager.Instance.scoreText.transform);
+            }
+
+            if (ScoreManager.Instance.comboText != null)
+            {
+                targets.Add(ScoreManager.Instance.comboText.transform);
+            }
+
+            if (ScoreManager.Instance.comboTitleText != null && !string.IsNullOrEmpty(ScoreManager.Instance.comboTitleText.text))
+            {
+                targets.Add(ScoreManager.Instance.comboTitleText.transform);
+            }
+        }
+
+        if (targets.Count == 0)
+        {
+            yield break;
+        }
+
+        Dictionary<Transform, Vector3> originalScales = new Dictionary<Transform, Vector3>();
+        foreach (Transform target in targets)
+        {
+            if (target != null)
+            {
+                originalScales[target] = target.localScale;
+            }
+        }
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            float normalized = elapsed / duration;
+            float popFactor = Mathf.SmoothStep(1.12f, 1f, normalized);
+            float breatheFactor = 1f + 0.06f * Mathf.Sin(elapsed * 12f);
+            float scaleFactor = popFactor * breatheFactor;
+
+            foreach (Transform target in targets)
+            {
+                if (target == null) continue;
+
+                Vector3 baseScale = originalScales.ContainsKey(target) ? originalScales[target] : target.localScale;
+                target.localScale = baseScale * scaleFactor;
+
+                if (target == comboBarTarget)
+                {
+                    float wobble = Mathf.Sin(elapsed * 16f) * 1.5f;
+                    target.localRotation = Quaternion.Euler(0f, 0f, wobble);
+                }
+            }
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        foreach (Transform target in targets)
+        {
+            if (target == null) continue;
+            if (originalScales.ContainsKey(target))
+            {
+                target.localScale = originalScales[target];
+            }
+
+            if (target == comboBarTarget)
+            {
+                target.localRotation = Quaternion.identity;
+            }
+        }
     }
 
     private void TriggerComboBarImpact()

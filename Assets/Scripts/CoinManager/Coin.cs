@@ -1,4 +1,5 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 
 public class Coin : MonoBehaviour
@@ -10,11 +11,18 @@ public class Coin : MonoBehaviour
     [Header("Coin Data")]
     public int colorIndex;
     public int pointValue; // YENİ: GDD v3'e göre coin'in taşıdığı puan (5, 10, 15, 20)
+    public bool isMysteryCoin;
     
     // Shortcut for BoardManager algorithms to access color seamlessly
     public int themeIndex => colorIndex; 
 
     private SpriteRenderer spriteRenderer;
+    private GameObject selectionGlowObject;
+    private SpriteRenderer selectionGlowRenderer;
+    private GameObject mysteryValueObject;
+    private TextMeshPro mysteryValueText;
+    private static readonly Color selectionGlowColor = new Color(1f, 0.4f, 0.85f, 0.45f);
+    private const float selectionGlowScaleFactor = 1.2f;
     
     // Store the initial scale reference safely
     public Vector3 originalScale { get; private set; } = Vector3.one;
@@ -47,11 +55,12 @@ public class Coin : MonoBehaviour
     }
 
     // YENİ: Tek bir Sprite ve Puan alarak kurulum yapar
-    public void SetupCoin(Sprite sprite, int index, int points)
+    public void SetupCoin(Sprite sprite, int index, int points, bool isMystery = false)
     {
         InitScale();
         colorIndex = index;
         pointValue = points; // Puanı atıyoruz
+        isMysteryCoin = isMystery;
 
         if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
 
@@ -59,6 +68,13 @@ public class Coin : MonoBehaviour
         {
             spriteRenderer.sprite = sprite;
         }
+
+        if (!isMysteryCoin)
+        {
+            HideMysteryValueDisplay();
+        }
+
+        UpdateSelectionGlowSprite();
     }
 
     public void SelectSquish()
@@ -103,6 +119,7 @@ public class Coin : MonoBehaviour
     public void ResetShape()
     {
         StopIdleWiggle();
+        DisableSelectionGlow();
 
         if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
 
@@ -113,6 +130,7 @@ public class Coin : MonoBehaviour
     public void ResetScale()
     {
         StopIdleWiggle();
+        DisableSelectionGlow();
         if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
         
         transform.localScale = originalScale;
@@ -256,6 +274,202 @@ public class Coin : MonoBehaviour
         if (this != null && gameObject != null)
         {
             transform.position = basePos;
+        }
+    }
+
+    public void EnableSelectionGlow()
+    {
+        if (selectionGlowObject == null)
+        {
+            CreateSelectionGlow();
+        }
+
+        if (selectionGlowObject != null)
+        {
+            UpdateSelectionGlowSprite();
+            selectionGlowObject.SetActive(true);
+        }
+    }
+
+    public void DisableSelectionGlow()
+    {
+        if (selectionGlowObject != null)
+        {
+            selectionGlowObject.SetActive(false);
+        }
+    }
+
+    private void CreateSelectionGlow()
+    {
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null) return;
+
+        selectionGlowObject = new GameObject("SelectionGlow");
+        selectionGlowObject.transform.SetParent(transform);
+        selectionGlowObject.transform.localPosition = Vector3.zero;
+        selectionGlowObject.transform.localRotation = Quaternion.identity;
+        selectionGlowObject.transform.localScale = Vector3.one * selectionGlowScaleFactor;
+
+        selectionGlowRenderer = selectionGlowObject.AddComponent<SpriteRenderer>();
+        selectionGlowRenderer.sprite = spriteRenderer.sprite;
+        selectionGlowRenderer.sortingOrder = spriteRenderer.sortingOrder - 1;
+        selectionGlowRenderer.color = selectionGlowColor;
+        selectionGlowRenderer.material = spriteRenderer.sharedMaterial;
+        selectionGlowRenderer.maskInteraction = UnityEngine.SpriteMaskInteraction.None;
+        selectionGlowRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        selectionGlowRenderer.receiveShadows = false;
+    }
+
+    private void UpdateSelectionGlowSprite()
+    {
+        if (selectionGlowRenderer == null || spriteRenderer == null) return;
+        if (selectionGlowRenderer.sprite != spriteRenderer.sprite)
+        {
+            selectionGlowRenderer.sprite = spriteRenderer.sprite;
+        }
+    }
+
+    private void EnsureMysteryValueDisplay()
+    {
+        if (mysteryValueObject != null) return;
+
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+
+        mysteryValueObject = new GameObject("MysteryValueText");
+        mysteryValueObject.transform.SetParent(transform, false);
+        mysteryValueObject.transform.localPosition = Vector3.zero;
+        mysteryValueObject.transform.localRotation = Quaternion.identity;
+        mysteryValueObject.transform.localScale = Vector3.one;
+
+        mysteryValueText = mysteryValueObject.AddComponent<TextMeshPro>();
+        mysteryValueText.alignment = TextAlignmentOptions.Center;
+        mysteryValueText.raycastTarget = false;
+        mysteryValueText.enableAutoSizing = false;
+        mysteryValueText.fontSize = 9f;
+        mysteryValueText.fontSizeMin = 6f;
+        mysteryValueText.fontSizeMax = 12f;
+        mysteryValueText.color = Color.white;
+        mysteryValueText.sortingOrder = spriteRenderer != null ? spriteRenderer.sortingOrder + 5 : 100;
+        mysteryValueText.text = string.Empty;
+    }
+
+    private void ShowMysteryValueDisplay(string value)
+    {
+        EnsureMysteryValueDisplay();
+        if (mysteryValueObject != null)
+        {
+            mysteryValueObject.SetActive(true);
+        }
+
+        if (mysteryValueText != null)
+        {
+            mysteryValueText.text = value;
+            mysteryValueText.color = new Color(1f, 0.95f, 0.35f, 1f);
+        }
+    }
+
+    private void HideMysteryValueDisplay()
+    {
+        if (mysteryValueObject != null)
+        {
+            mysteryValueObject.SetActive(false);
+        }
+    }
+
+    private void SetMysteryValueAlpha(float alpha)
+    {
+        if (mysteryValueText == null) return;
+
+        Color color = mysteryValueText.color;
+        color.a = alpha;
+        mysteryValueText.color = color;
+    }
+
+    private IEnumerator FadeMysteryValueRoutine(float targetAlpha, float duration)
+    {
+        if (mysteryValueText == null) yield break;
+
+        float startAlpha = mysteryValueText.color.a;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            if (this == null || gameObject == null) yield break;
+
+            float t = elapsed / duration;
+            Color color = mysteryValueText.color;
+            color.a = Mathf.Lerp(startAlpha, targetAlpha, t);
+            mysteryValueText.color = color;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (mysteryValueText != null)
+        {
+            Color finalColor = mysteryValueText.color;
+            finalColor.a = targetAlpha;
+            mysteryValueText.color = finalColor;
+        }
+    }
+
+    public IEnumerator RevealMysteryCoinRoutine(Vector3 targetPosition, float delay = 0f)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (this == null || gameObject == null) yield break;
+
+        Vector3 startPos = transform.position;
+        Vector3 startScale = transform.localScale;
+        float duration = 0.9f;
+        float elapsed = 0f;
+
+        EnsureMysteryValueDisplay();
+        ShowMysteryValueDisplay(pointValue.ToString());
+        SetMysteryValueAlpha(0f);
+
+        while (elapsed < duration)
+        {
+            if (this == null || gameObject == null) yield break;
+
+            float t = elapsed / duration;
+            float eased = Mathf.SmoothStep(0f, 1f, t);
+            float spinAngle = Mathf.Lerp(0f, 720f, eased);
+
+            transform.position = Vector3.Lerp(startPos, targetPosition, eased);
+            transform.localScale = Vector3.Lerp(startScale, originalScale * 2.8f, eased);
+            transform.rotation = Quaternion.Euler(0f, 0f, spinAngle);
+
+            float alphaT = Mathf.Clamp01((t - 0.6f) / 0.4f);
+            SetMysteryValueAlpha(alphaT);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (this != null && gameObject != null)
+        {
+            transform.position = targetPosition;
+            transform.localScale = originalScale * 2.8f;
+            transform.rotation = Quaternion.identity;
+            SetMysteryValueAlpha(1f);
+        }
+
+        yield return new WaitForSeconds(0.65f);
+
+        if (this != null && gameObject != null)
+        {
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = new Color(1f, 1f, 1f, 0.7f);
+            }
+
+            StartCoroutine(FadeMysteryValueRoutine(0f, 0.25f));
+            yield return new WaitForSeconds(0.25f);
+
+            if (this != null && gameObject != null)
+            {
+                Destroy(gameObject);
+            }
         }
     }
 

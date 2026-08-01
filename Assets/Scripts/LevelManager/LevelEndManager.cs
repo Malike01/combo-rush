@@ -35,6 +35,7 @@ public class LevelEndManager : MonoBehaviour
     public LevelData nextLevel; 
 
     private bool isLevelWon = false; 
+    public bool IsLevelEnded { get; private set; } = false;
 
     private void Awake()
     {
@@ -43,11 +44,15 @@ public class LevelEndManager : MonoBehaviour
 
     private void Start()
     {
+        IsLevelEnded = false;
         if (levelEndPanel != null) levelEndPanel.SetActive(false);
     }
 
     public void ShowLevelEndScreen()
     {
+        if (IsLevelEnded) return;
+
+        IsLevelEnded = true;
         transform.SetAsLastSibling(); 
         
         if (levelEndPanel != null) levelEndPanel.SetActive(true);
@@ -143,22 +148,34 @@ public class LevelEndManager : MonoBehaviour
 
     public void OnClickClosePanel()
     {
+        IsLevelEnded = false;
+
         if (levelEndPanel != null) levelEndPanel.SetActive(false); 
 
+        LevelData activeLevel;
         if (isLevelWon && nextLevel != null)
         {
-            boardManager.LoadLevel(nextLevel);
-            currentLevel = nextLevel; 
+            activeLevel = nextLevel;
+            currentLevel = nextLevel;
         }
         else
         {
-            LevelData activeLevel = currentLevel != null ? currentLevel : boardManager.currentLevel;
-            boardManager.LoadLevel(activeLevel); 
+            activeLevel = currentLevel != null ? currentLevel : boardManager.currentLevel;
         }
 
-        if (timerManager != null) timerManager.StartOrResetTimer(); 
+        if (boardManager != null)
+        {
+            boardManager.LoadLevel(activeLevel);
+        }
+
+        if (timerManager != null) timerManager.ResetTimerFull(); 
         
         if (ScoreManager.Instance != null) ScoreManager.Instance.ResetLevelData();
+
+        if (LevelManager.Instance != null)
+        {
+            LevelManager.Instance.SetCurrentLevel(activeLevel);
+        }
     }
 
 }

@@ -13,8 +13,15 @@ public class ScoreManager : MonoBehaviour
     public TextMeshProUGUI endComboText;   // Text (TMP) for the end-of-level summary[cite: 2]
 
     [Header("Target Visual Settings")]
-    public Color defaultColor = Color.white;
-    public Color successColor = Color.green;
+    public Color defaultColor = new Color(1f, 0.95f, 0.65f, 1f);
+    public VertexGradient defaultGradient = new VertexGradient(
+        new Color(0.9f, 0.1f, 0.4f, 1f),   
+        new Color(0.95f, 0.35f, 0.0f, 1f), 
+        new Color(1f, 0.75f, 0.0f, 1f),   
+        new Color(1f, 0.85f, 0.1f, 1f)     
+    );
+
+    public Color successColor = new Color(0.28f, 1f, 0.44f, 1f);
 
     // --- OYUNCU VERILERI ---
     public int currentScore { get; private set; } = 0; // Win/Lose kontrolu icin disariya acik, ama sadece buradan degisebilir[cite: 2]
@@ -50,9 +57,11 @@ public class ScoreManager : MonoBehaviour
         currentCombo = 1;
         maxComboReached = 1;
         
-        if (scoreText != null) scoreText.color = defaultColor;
-        if (comboText != null) comboText.color = defaultColor;
+        if (scoreText != null) ApplyDefaultGradient(scoreText);
+        if (comboText != null) ApplyDefaultGradient(comboText);
         if (comboTitleText != null) comboTitleText.text = "";
+
+        UpdateUI();
     }
 
     public void AddScore(int totalCoinValue, int coinCount) 
@@ -99,11 +108,11 @@ public class ScoreManager : MonoBehaviour
             
             if (targetScore > 0 && currentScore >= targetScore)
             {
-                scoreText.color = successColor;
+                ApplySolidColor(scoreText, successColor);
             }
             else
             {
-                scoreText.color = defaultColor;
+                ApplyDefaultGradient(scoreText);
             }
         }
 
@@ -120,17 +129,17 @@ public class ScoreManager : MonoBehaviour
             else //[cite: 2]
             {
                 // Evolved text for high combos[cite: 2]
-                comboText.text = $"{evolutionName} x{currentCombo}"; //[cite: 2]
+                comboText.text = $"{evolutionName}"; //[cite: 2]
             }
 
             // Yapilan en yuksek kombo (maxComboReached) hedefe ulastiysa yesil yap
             if (targetCombo > 0 && maxComboReached >= targetCombo)
             {
-                comboText.color = successColor;
+                ApplySolidColor(comboText, successColor);
             }
             else
             {
-                comboText.color = defaultColor;
+                ApplyDefaultGradient(comboText);
             }
         }
 
@@ -167,57 +176,124 @@ public class ScoreManager : MonoBehaviour
         return ""; // 10'dan kucukse ekranda unvan gorunmez
     }
 
+    private void ApplyDefaultGradient(TextMeshProUGUI textComponent)
+    {
+        if (textComponent == null) return;
+
+        textComponent.color = defaultColor;
+        textComponent.colorGradient = defaultGradient;
+    }
+
+    private void ApplySolidColor(TextMeshProUGUI textComponent, Color color)
+    {
+        if (textComponent == null) return;
+
+        textComponent.color = color;
+        textComponent.colorGradient = new VertexGradient(color, color, color, color);
+    }
+
     // --- ANIMATION SECTION ---
 
     private void TriggerPunchAnimation()
     {
-        if (scoreText != null) //[cite: 2]
+        if (scoreText != null)
         {
-            if (scoreAnimCoroutine != null) StopCoroutine(scoreAnimCoroutine); //[cite: 2]
-            scoreAnimCoroutine = StartCoroutine(PunchScaleRoutine(scoreText.transform, 1.25f, 0.15f)); //[cite: 2]
+            if (scoreAnimCoroutine != null) StopCoroutine(scoreAnimCoroutine);
+            scoreAnimCoroutine = StartCoroutine(PulseTextColorRoutine(scoreText, new Color(1f, 0.95f, 0.25f, 1f), 0.16f));
         }
 
-        if (comboText != null) //[cite: 2]
+        if (comboText != null)
         {
-            if (comboAnimCoroutine != null) StopCoroutine(comboAnimCoroutine); //[cite: 2]
-            comboAnimCoroutine = StartCoroutine(PunchScaleRoutine(comboText.transform, 1.35f, 0.15f)); //[cite: 2]
+            if (comboAnimCoroutine != null) StopCoroutine(comboAnimCoroutine);
+            comboAnimCoroutine = StartCoroutine(PulseTextColorRoutine(comboText, new Color(1f, 0.95f, 0.25f, 1f), 0.16f));
         }
         
-        // Eger unvan metni varsa ona da bir sekme (punch) efekti ekliyoruz
         if (comboTitleText != null && !string.IsNullOrEmpty(comboTitleText.text))
         {
-            StartCoroutine(PunchScaleRoutine(comboTitleText.transform, 1.15f, 0.15f));
+            StartCoroutine(PulseTextColorRoutine(comboTitleText, new Color(0.95f, 0.75f, 1f, 1f), 0.16f));
         }
     }
 
-    private IEnumerator PunchScaleRoutine(Transform targetTransform, float scaleFactor, float duration)
+    private IEnumerator PulseTextColorRoutine(TextMeshProUGUI textComponent, Color pulseColor, float duration)
     {
-        Vector3 originalScale = Vector3.one; //[cite: 2]
-        Vector3 punchScale = originalScale * scaleFactor; //[cite: 2]
+        if (textComponent == null) yield break;
 
-        float halfDuration = duration / 2f; //[cite: 2]
-        float elapsed = 0f; //[cite: 2]
+        float halfDuration = duration / 2f;
+        float elapsed = 0f;
 
-        // 1. Growth Phase[cite: 2]
-        while (elapsed < halfDuration) //[cite: 2]
+        while (elapsed < halfDuration)
         {
-            if(targetTransform == null) yield break;
-            targetTransform.localScale = Vector3.Lerp(originalScale, punchScale, elapsed / halfDuration); //[cite: 2]
-            elapsed += Time.deltaTime; //[cite: 2]
-            yield return null; //[cite: 2]
-        }
-        if(targetTransform != null) targetTransform.localScale = punchScale; //[cite: 2]
+            if (textComponent == null) yield break;
 
-        // 2. Shrinking / Return to Original State Phase[cite: 2]
-        elapsed = 0f; //[cite: 2]
-        while (elapsed < halfDuration) //[cite: 2]
-        {
-            if(targetTransform == null) yield break;
-            targetTransform.localScale = Vector3.Lerp(punchScale, originalScale, elapsed / halfDuration); //[cite: 2]
-            elapsed += Time.deltaTime; //[cite: 2]
-            yield return null; //[cite: 2]
+            float t = elapsed / halfDuration;
+            textComponent.color = Color.Lerp(textComponent.color, pulseColor, t);
+            textComponent.colorGradient = new VertexGradient(
+                Color.Lerp(textComponent.color, pulseColor, t),
+                Color.Lerp(textComponent.color, pulseColor, t),
+                Color.Lerp(textComponent.color, pulseColor, t),
+                Color.Lerp(textComponent.color, pulseColor, t));
+
+            elapsed += Time.deltaTime;
+            yield return null;
         }
 
-        if(targetTransform != null) targetTransform.localScale = originalScale; //[cite: 2]
+        if (textComponent != null)
+        {
+            RestoreTextVisualState(textComponent);
+        }
+    }
+
+    private void RestoreTextVisualState(TextMeshProUGUI textComponent)
+    {
+        if (textComponent == null) return;
+
+        if (textComponent == scoreText)
+        {
+            if (targetScoreReached())
+            {
+                ApplySolidColor(textComponent, successColor);
+            }
+            else
+            {
+                ApplyDefaultGradient(textComponent);
+            }
+        }
+        else if (textComponent == comboText)
+        {
+            if (targetComboReached())
+            {
+                ApplySolidColor(textComponent, successColor);
+            }
+            else
+            {
+                ApplyDefaultGradient(textComponent);
+            }
+        }
+        else if (textComponent == comboTitleText)
+        {
+            textComponent.color = new Color(1f, 0.95f, 0.65f, 1f);
+        }
+    }
+
+    private bool targetScoreReached()
+    {
+        int targetScore = 0;
+        if (BoardManager.Instance != null && BoardManager.Instance.currentLevel != null)
+        {
+            targetScore = BoardManager.Instance.currentLevel.targetScore;
+        }
+
+        return targetScore > 0 && currentScore >= targetScore;
+    }
+
+    private bool targetComboReached()
+    {
+        int targetCombo = 0;
+        if (BoardManager.Instance != null && BoardManager.Instance.currentLevel != null)
+        {
+            targetCombo = BoardManager.Instance.currentLevel.targetCombo;
+        }
+
+        return targetCombo > 0 && maxComboReached >= targetCombo;
     }
 }

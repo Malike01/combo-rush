@@ -141,6 +141,7 @@ public partial class BoardManager : MonoBehaviour
                 SpawnJellyAt(x, y, new Vector3(pos.x, pos.y, -1f));
             }
         }
+
     }
 
     private void ParseGridLayout()
@@ -181,8 +182,8 @@ public partial class BoardManager : MonoBehaviour
         if (boardBackgroundPrefab == null) return;
 
         Vector3 centerPos = GetWorldPosition((width - 1) / 2f, (height - 1) / 2f);
-        float paddingX = 0.8f; 
-        float paddingY = 0.8f; 
+        float paddingX = 1f; 
+        float paddingY = 1f; 
         float totalWidth = (52 * spacing) + paddingX;
         float totalHeight = (62 * spacing) + paddingY;
 
@@ -194,7 +195,7 @@ public partial class BoardManager : MonoBehaviour
         SpriteRenderer sr = bgObj.GetComponent<SpriteRenderer>();
         if (sr != null)
         {
-            sr.color = new Color(1f, 1f, 1f, 0.15f);
+            sr.color = new Color(1f, 1f, 1f, 0.35f);
             sr.sortingOrder = 1;
         }
     }
@@ -281,7 +282,7 @@ public partial class BoardManager : MonoBehaviour
             int finalValue = CalculateFinalPointValue(dropData.pointValue);
 
             // Assign the correct sprite, color index, and calculated point value
-            coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue);
+            coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue, dropData.pointValue == 0);
             board[x, y] = coinScript;
         }
     }
@@ -339,7 +340,16 @@ public partial class BoardManager : MonoBehaviour
             {
                 board[coin.x, coin.y] = null;
                 coin.transform.SetParent(null);
-                StartCoroutine(FlyJellyToUI(coin.gameObject, i * 0.08f));
+
+                if (coin.isMysteryCoin)
+                {
+                    Vector3 revealTarget = Vector3.Lerp(coin.transform.position, new Vector3(0f, 1.5f, -2f), 0.35f);
+                    StartCoroutine(coin.RevealMysteryCoinRoutine(revealTarget, i * 0.08f));
+                }
+                else
+                {
+                    StartCoroutine(FlyJellyToUI(coin.gameObject, i * 0.08f));
+                }
             }
         }
 
@@ -425,7 +435,7 @@ public partial class BoardManager : MonoBehaviour
                         int finalValue = CalculateFinalPointValue(dropData.pointValue);
 
                         // Set the specific data for the spawned coin
-                        coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue);
+                        coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue, dropData.pointValue == 0);
                         board[x, y] = coinScript;
 
                         StartCoroutine(SmoothMove(coinObj.transform, targetPos, 0.2f));

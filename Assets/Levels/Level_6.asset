@@ -12,11 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0893d8bd503c4644cacd68c0f320c520, type: 3}
   m_Name: Level_6
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
-  levelNumber: 1
-  targetScore: 1000
+  levelNumber: 6
   gridWidth: 6
   gridHeight: 8
-  gridLayout: '011110
+  gridLayout: '001111
 
     111111
 
@@ -30,4 +29,6 @@ MonoBehaviour:
 
     111111
 
-    011110'
+    111111'
+  targetScore: 120
+  targetCombo: 7

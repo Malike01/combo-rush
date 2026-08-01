@@ -70,7 +70,7 @@ public class ComboUIManager : MonoBehaviour
     {
         RectTransform rect = comboText.rectTransform;
         Vector3 defaultScale = Vector3.one;
-        Vector3 targetPunchScale = new Vector3(1.35f, 1.35f, 1f); 
+        Vector3 targetPunchScale = Vector3.one;
 
         float duration = 0.15f;
         float elapsed = 0f;

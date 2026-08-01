@@ -13,7 +13,6 @@ MonoBehaviour:
   m_Name: Level_1
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   levelNumber: 1
-  targetScore: 1000
   gridWidth: 6
   gridHeight: 8
   gridLayout: '111111
@@ -31,3 +30,5 @@ MonoBehaviour:
     111111
 
     111111'
+  targetScore: 30
+  targetCombo: 3

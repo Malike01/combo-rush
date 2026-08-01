@@ -15,6 +15,7 @@ public class ComboTimerManager : MonoBehaviour
 
     private float currentTime;
     private bool isTimerRunning = false;
+    public bool IsLevelFinished { get; private set; } = false;
 
     [Header("UI References")]
     public Image timerFillImage;
@@ -77,6 +78,7 @@ public class ComboTimerManager : MonoBehaviour
     {
         StopTimer();
 
+        IsLevelFinished = false;
         currentTime = maxTime;
         isTimerRunning = true; 
 
@@ -111,6 +113,8 @@ public class ComboTimerManager : MonoBehaviour
     /// </summary>
     public void StartOrResetTimer()
     {
+        if (IsLevelFinished) return;
+
         if (!isTimerRunning)
         {
             // First hit: initialize with full or default base time and start running
@@ -188,6 +192,9 @@ public class ComboTimerManager : MonoBehaviour
 
     private void TimeOut()
     {
+        if (IsLevelFinished) return;
+
+        IsLevelFinished = true;
         isTimerRunning = false;
         currentTime = 0;
         

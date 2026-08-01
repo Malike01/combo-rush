@@ -52,7 +52,7 @@ public class InputManager : MonoBehaviour
 
     void Update()
     {
-        if (boardManager != null && boardManager.IsProcessing) return;
+        if (IsGameplayLocked()) return;
 
         HandleInput();
         HandleHoverDetection();
@@ -61,6 +61,8 @@ public class InputManager : MonoBehaviour
     // --- SYNCHRONIZED IDLE WIGGLE DETECTION ---
     void HandleHoverDetection()
     {
+        if (IsGameplayLocked()) return;
+
         Coin currentCoin = GetCoinUnderMouse();
 
         if (currentCoin != null)
@@ -125,6 +127,7 @@ public class InputManager : MonoBehaviour
 
     void HandleInput()
     {
+        if (IsGameplayLocked()) return;
 
         if (EventSystem.current.IsPointerOverGameObject()) 
         {
@@ -177,6 +180,8 @@ public class InputManager : MonoBehaviour
 
     private void SelectCoin(Coin coin)
     {
+        if (IsGameplayLocked()) return;
+
         if (!selectedJellies.Contains(coin))
         {
             selectedJellies.Add(coin);
@@ -191,6 +196,7 @@ public class InputManager : MonoBehaviour
             }
             
             StartCoroutine(coin.ShakeJelly(0.08f, 0.03f));
+            coin.EnableSelectionGlow();
 
             // Pitch Scaling
             if (AudioManager.Instance != null)
@@ -203,7 +209,7 @@ public class InputManager : MonoBehaviour
 
             if (dragSparklePrefab != null)
             {
-                Instantiate(dragSparklePrefab, coin.transform.position, Quaternion.identity);
+                Instantiate(dragSparklePrefab, coin.transform.position, Quaternion.identity, coin.transform);
             }
 
             int currentCombo = selectedJellies.Count;
@@ -278,6 +284,8 @@ public class InputManager : MonoBehaviour
 
     void ClearSelection()
     {
+        if (IsGameplayLocked()) return;
+
         foreach (var coin in selectedJellies)
         {
             if (coin != null)
@@ -309,6 +317,17 @@ public class InputManager : MonoBehaviour
         }
         selectedJellies.Clear();
         }
+    }
+
+    private bool IsGameplayLocked()
+    {
+        if (boardManager != null && boardManager.IsProcessing) return true;
+
+        if (ComboTimerManager.Instance != null && ComboTimerManager.Instance.IsLevelFinished) return true;
+
+        if (LevelEndManager.Instance != null && LevelEndManager.Instance.IsLevelEnded) return true;
+
+        return false;
     }
 
     Coin GetCoinUnderMouse()
