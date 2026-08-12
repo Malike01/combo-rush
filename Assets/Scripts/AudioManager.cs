@@ -21,6 +21,9 @@ public class AudioManager : MonoBehaviour
     public AudioClip fastTickClip;    // Fast ticking sound for warning
     public AudioClip timeOutClip;
 
+    [Header("Purchase Audio Clips")]
+    public AudioClip purchaseSuccessSound;
+
     void Awake()
     {
         if (Instance == null)
@@ -99,6 +102,10 @@ public class AudioManager : MonoBehaviour
         {
             case "ShuffleExplosion":
                 clipToPlay = ShuffleExplosion;
+                break;
+
+            case "PurchaseSuccess":
+                clipToPlay = purchaseSuccessSound;
                 break;
         }
 

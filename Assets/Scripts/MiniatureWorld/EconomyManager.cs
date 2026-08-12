@@ -29,7 +29,7 @@ public class EconomyManager : MonoBehaviour
     {
         if(coinText != null) 
         {
-            coinText.text = coins.ToString();
+            coinText.text = coins.ToString() + " Coin"; // Display the coin count with " Coin" suffix
         }
     }
 }
