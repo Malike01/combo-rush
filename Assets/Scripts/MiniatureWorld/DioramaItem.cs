@@ -19,6 +19,7 @@ public class DioramaItem : MonoBehaviour
 
     private MeshRenderer[] renderers; 
     private bool isUnlocked = false;
+    public bool IsUnlocked => isUnlocked;
     
     private Vector3 originalScale;
     private Vector3 originalPosition;

@@ -3,7 +3,7 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     [Header("Hareket (Pan) - Sol Tık")]
-    public float panSpeed = 20f;
+    public float panSpeed = 10f;
 
     [Header("Döndürme (Rotate) - Sağ Tık")]
     public float rotateSpeed = 250f;
