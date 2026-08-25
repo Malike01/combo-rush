@@ -10,8 +10,11 @@ public class Coin : MonoBehaviour
 
     [Header("Coin Data")]
     public int colorIndex;
-    public int pointValue; // YENİ: GDD v3'e göre coin'in taşıdığı puan (5, 10, 15, 20)
+    public int pointValue; 
     public bool isMysteryCoin;
+    
+    [Header("Combo Progression Sprites")]
+    public Sprite[] progressionSprites; 
     
     // Shortcut for BoardManager algorithms to access color seamlessly
     public int themeIndex => colorIndex; 
@@ -54,12 +57,11 @@ public class Coin : MonoBehaviour
         }
     }
 
-    // YENİ: Tek bir Sprite ve Puan alarak kurulum yapar
     public void SetupCoin(Sprite sprite, int index, int points, bool isMystery = false)
     {
         InitScale();
         colorIndex = index;
-        pointValue = points; // Puanı atıyoruz
+        pointValue = points; 
         isMysteryCoin = isMystery;
 
         if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
@@ -75,6 +77,21 @@ public class Coin : MonoBehaviour
         }
 
         UpdateSelectionGlowSprite();
+    }
+
+    public void UpdateFaceByCombo(int comboLevel)
+    {
+        // Eğer dizi atanmamışsa veya boşsa işlem yapma
+        if (progressionSprites == null || progressionSprites.Length == 0) return;
+
+        int safeIndex = Mathf.Clamp(comboLevel, 0, progressionSprites.Length - 1);
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sprite = progressionSprites[safeIndex];
+            
+            UpdateSelectionGlowSprite();
+        }
     }
 
     public void SelectSquish()
@@ -345,10 +362,15 @@ public class Coin : MonoBehaviour
         mysteryValueText.alignment = TextAlignmentOptions.Center;
         mysteryValueText.raycastTarget = false;
         mysteryValueText.enableAutoSizing = false;
-        mysteryValueText.fontSize = 9f;
+        mysteryValueText.fontSize = 20f;
         mysteryValueText.fontSizeMin = 6f;
         mysteryValueText.fontSizeMax = 12f;
         mysteryValueText.color = Color.white;
+        mysteryValueText.colorGradient = new VertexGradient(
+            new Color(1f, 0.95f, 0.35f, 1f),
+            new Color(1f, 0.95f, 0.35f, 1f),
+            new Color(1f, 0.95f, 0.35f, 1f),
+            new Color(1f, 0.95f, 0.35f, 1f));
         mysteryValueText.sortingOrder = spriteRenderer != null ? spriteRenderer.sortingOrder + 5 : 100;
         mysteryValueText.text = string.Empty;
     }

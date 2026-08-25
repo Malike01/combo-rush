@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems; 
+using DG.Tweening;
 
 public class InputManager : MonoBehaviour
 {
@@ -18,7 +19,7 @@ public class InputManager : MonoBehaviour
         new Color(0.2f, 0.8f, 0.2f, 1.0f), 
         new Color(1.0f, 0.5f, 0.0f, 1.0f), 
         new Color(0.6f, 0.2f, 0.8f, 1.0f), 
-        new Color(0.0f, 0.8f, 0.8f, 1.0f)  
+        new Color(1.0f, 0.0f, 0.0f, 1.0f)
     };
 
     [Header("Line Visuals")]
@@ -167,7 +168,7 @@ public class InputManager : MonoBehaviour
             isDragging = false;
             ResetHoverTimer();
 
-            if (selectedJellies.Count >= 4)
+            if (selectedJellies.Count >= 4) 
             {
                 StartCoroutine(ProcessMergeSequence(new List<Coin>(selectedJellies)));
             }
@@ -185,6 +186,17 @@ public class InputManager : MonoBehaviour
         if (!selectedJellies.Contains(coin))
         {
             selectedJellies.Add(coin);
+
+            Vector3 originalScale = coin.transform.localScale;
+
+            coin.transform.DOKill();
+
+            coin.transform.DOScale(originalScale * 1.25f, 0.1f).OnComplete(() => 
+            {
+                coin.transform.DOScale(originalScale, 0.15f).SetEase(Ease.OutBounce);
+            });
+
+            UpdateSelectedCoinFaces();
 
             if (!hasGameStarted)
             {
@@ -222,6 +234,27 @@ public class InputManager : MonoBehaviour
             UpdateFullLinePositions();
         }
     }
+
+    private void UpdateSelectedCoinFaces()
+    {
+        int count = selectedJellies.Count;
+        int faceLevel = 0;
+
+
+        if (count >= 3)
+        {
+            faceLevel = count - 2; 
+        }
+
+        foreach (Coin coin in selectedJellies)
+        {
+            if (coin != null)
+            {
+                coin.UpdateFaceByCombo(faceLevel);
+            }
+        }
+    }
+
     void UpdateFullLinePositions()
     {
         if (lineRenderer == null) return;
@@ -258,7 +291,6 @@ public class InputManager : MonoBehaviour
 
         int simulatedComboMultiplier = 27; // Simulated combo multiplier for testing purposes
 
-        // COMBO QUALITY system integration
         if (ComboQualityManager.Instance != null)
         {
             ComboQualityManager.Instance.ProcessComboQuality(coinCount, simulatedComboMultiplier, mergeCenter);
@@ -291,6 +323,8 @@ public class InputManager : MonoBehaviour
             if (coin != null)
             {
                 coin.ResetShape();
+                
+                coin.UpdateFaceByCombo(0);
             }
         }
 
@@ -299,34 +333,22 @@ public class InputManager : MonoBehaviour
         if (lineRenderer != null) lineRenderer.positionCount = 0;
 
         if (AudioManager.Instance != null)
-{
-        float randomPitch = Random.Range(0.95f, 1.05f);
-        AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, randomPitch);
-
-        if (ComboUIManager.Instance != null)
         {
-            ComboUIManager.Instance.UpdateComboUI(selectedJellies.Count);
-        }
+            float randomPitch = Random.Range(0.95f, 1.05f);
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, randomPitch);
 
-        foreach (Coin coin in selectedJellies)
-        {
-            if (coin != null)
+            if (ComboUIManager.Instance != null)
             {
-                coin.ResetShape(); 
+                ComboUIManager.Instance.UpdateComboUI(0); 
             }
-        }
-        selectedJellies.Clear();
         }
     }
 
     private bool IsGameplayLocked()
     {
         if (boardManager != null && boardManager.IsProcessing) return true;
-
         if (ComboTimerManager.Instance != null && ComboTimerManager.Instance.IsLevelFinished) return true;
-
         if (LevelEndManager.Instance != null && LevelEndManager.Instance.IsLevelEnded) return true;
-
         return false;
     }
 

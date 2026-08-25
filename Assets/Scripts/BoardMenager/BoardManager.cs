@@ -240,17 +240,15 @@ public partial class BoardManager : MonoBehaviour
         return coinDropSettings[0];
     }
 
-    // YENI EKLENEN FONKSIYON: Mystery Jetonlarin Puanini Rastgele Belirler
     private int CalculateFinalPointValue(int initialValue)
     {
-        // Eger Inspector'dan puan 0 (Mystery) ayarlandiysa, icerisine rastgele gercek bir puan ata
         if (initialValue == 0)
         {
             int[] mysteryValues = new int[] { 5, 10, 15, 20 };
             return mysteryValues[Random.Range(0, mysteryValues.Length)];
         }
         
-        return initialValue; // Degilse kendi orjinal puanini dondur
+        return initialValue;
     }
 
     void SpawnJellyAt(int x, int y, Vector3 spawnPos)

@@ -116,17 +116,9 @@ public partial class BoardManager : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < duration)
         {
-            float normalized = elapsed / duration;
-            float popFactor = Mathf.SmoothStep(1.12f, 1f, normalized);
-            float breatheFactor = 1f + 0.06f * Mathf.Sin(elapsed * 12f);
-            float scaleFactor = popFactor * breatheFactor;
-
             foreach (Transform target in targets)
             {
                 if (target == null) continue;
-
-                Vector3 baseScale = originalScales.ContainsKey(target) ? originalScales[target] : target.localScale;
-                target.localScale = baseScale * scaleFactor;
 
                 if (target == comboBarTarget)
                 {
@@ -165,7 +157,7 @@ public partial class BoardManager : MonoBehaviour
     private IEnumerator PunchScaleUI(Transform uiTransform)
     {
         Vector3 originalScale = Vector3.one; 
-        Vector3 punchScale = originalScale * 1.25f;
+        Vector3 punchScale = originalScale;
 
         float duration = 0.1f;
         float elapsed = 0f;
