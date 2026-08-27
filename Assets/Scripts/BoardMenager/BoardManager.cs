@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening;
 
 // Defines the visual themes for the coins (colors)
 [System.Serializable]
@@ -319,6 +320,16 @@ public partial class BoardManager : MonoBehaviour
         SpriteRenderer sr = matchedCoins[0].GetComponent<SpriteRenderer>();
         Color burstColor = sr != null ? sr.color : Color.white;
 
+        if (matchedCoins.Count >= 5)
+        {
+            float sarsintiSiddeti = 0.1f + (matchedCoins.Count * 0.02f); // Taş sayısına göre şiddet artar
+            
+            if (CameraShake.Instance != null)
+            {
+                CameraShake.Instance.TriggerShake(0.3f, sarsintiSiddeti, 25);
+            }
+        }
+
         if (ParticleFXManager.Instance != null)
         {
             ParticleFXManager.Instance.PlayBurst(burstPoint, burstColor, matchedCoins.Count);
@@ -383,14 +394,15 @@ public partial class BoardManager : MonoBehaviour
                             movingCoins.transform.name = $"Coin ({x},{y})";
 
                             Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
-                            StartCoroutine(SmoothMove(movingCoins.transform, targetPos, 0.15f));
+                            movingCoins.DropToTargetPosition(targetPos, 0.3f);
+
                             break;
                         }
                     }
                 }
             }
         }
-        yield return new WaitForSeconds(0.18f);
+        yield return new WaitForSeconds(0.3f);
     }
 
     private IEnumerator RefillGridRoutine()
@@ -436,12 +448,13 @@ public partial class BoardManager : MonoBehaviour
                         coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue, dropData.pointValue == 0);
                         board[x, y] = coinScript;
 
-                        StartCoroutine(SmoothMove(coinObj.transform, targetPos, 0.2f));
+                        coinScript.DropToTargetPosition(targetPos, 0.4f);
+
                     }
                 }
             }
         }
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.4f);
     }
 
     private IEnumerator SmoothMove(Transform target, Vector3 endPos, float duration)

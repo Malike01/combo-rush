@@ -1,6 +1,7 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using DG.Tweening;
 
 public class Coin : MonoBehaviour
 {
@@ -525,5 +526,25 @@ public class Coin : MonoBehaviour
             transform.position = centerTarget;
             transform.localScale = Vector3.zero;
         }
+    }
+
+    public void DropToTargetPosition(Vector3 targetPosition, float duration = 0.4f)
+    {
+        StopIdleWiggle();
+        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
+        transform.DOKill(); 
+
+        transform.localScale = originalScale;
+
+        transform.DOMove(targetPosition, duration)
+            .SetEase(Ease.InQuad)
+            .OnComplete(() => 
+            {
+                Sequence squashSeq = DOTween.Sequence();
+                
+                squashSeq.Append(transform.DOScale(new Vector3(originalScale.x * 1.25f, originalScale.y * 0.75f, originalScale.z), 0.1f));
+                
+                squashSeq.Append(transform.DOScale(originalScale, 0.2f).SetEase(Ease.OutBack));
+            });
     }
 }

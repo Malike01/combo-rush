@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using TMPro;
+using DG.Tweening; // Required for DOTween
 
 public class ComboQualityManager : MonoBehaviour
 {
@@ -23,7 +24,7 @@ public class ComboQualityManager : MonoBehaviour
 
     public void ProcessComboQuality(int jellyCount, int currentCombo, Vector3 spawnPosition)
     {
-        // 1-4 Jelly = Match, 5+ = Combo[cite: 1]
+        // 1-4 Jelly = Match, 5+ = Combo
         if (jellyCount < 5) return; 
 
         string qualityTitle = "";
@@ -42,26 +43,26 @@ public class ComboQualityManager : MonoBehaviour
         {
             qualityTitle = "GREAT!";
             qualityColor = greatColor;
-            textScale = 1.05f;
+            textScale = 1.15f; // Slightly increased for a juicier feel
         }
         else if (jellyCount >= 10 && jellyCount <= 14)
         {
             qualityTitle = "PERFECT!!";
             qualityColor = perfectColor;
-            textScale = 1.1f;
+            textScale = 1.3f;
         }
         else if (jellyCount >= 15 && jellyCount <= 19)
         {
             qualityTitle = "LEGENDARY!!!";
             qualityColor = legendaryColor;
-            textScale = 1.15f;
+            textScale = 1.45f;
         }
         else if (jellyCount >= 20)
         {
             qualityTitle = "IMMORTAL!!!";
             qualityColor = immortalColor;
-            textScale = 1.2f;
-            triggerGlobalShake = true; // 20+ Jelly ASMR Shockwave[cite: 1]
+            textScale = 1.6f;
+            triggerGlobalShake = true; // 20+ Jelly ASMR Shockwave
         }
 
         string finalMessage = $"<size=130%><b>{qualityTitle}</b></size>\n<size=80%>{jellyCount} JELLY</size>\n<size=90%>COMBO x{currentCombo}</size>";
@@ -78,12 +79,15 @@ public class ComboQualityManager : MonoBehaviour
 
         if (triggerGlobalShake && boardManager != null)
         {
-            boardManager.TriggerGlobalImmortalShake();
+            if (CameraShake.Instance != null)
+            {
+                CameraShake.Instance.TriggerShake(0.4f, 0.6f, 25);
+            }
         }
 
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlayComboQualitySound(jellyCount);
+            // AudioManager.Instance.PlayComboQualitySound(jellyCount);
         }
     }
 
@@ -97,69 +101,61 @@ public class ComboQualityManager : MonoBehaviour
         if (textMesh != null)
         {
             textMesh.text = message;
-            textMesh.alignment = TextAlignmentOptions.Center;
-            textMesh.sortingOrder = 100; 
-            textMesh.color = Color.white;
+            textMesh.alignment = TextAlignmentOptions.Center;            
+            // Start with white color to give a flash effect before settling into the final color
+            textMesh.color = Color.white; 
+
+            MeshRenderer mr = textObj.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                mr.sortingLayerName = "UI"; 
+                mr.sortingOrder = 9999;
+            }
         }
 
-        StartCoroutine(JuicyTextAnimation(textObj, textMesh, targetScale, finalColor));
+        // Trigger the DOTween animation sequence
+        AnimateWithDOTween(textObj, textMesh, targetScale, finalColor);
     }
 
-    private IEnumerator JuicyTextAnimation(GameObject textObj, TextMeshPro tmp, float targetScale, Color finalColor)
+    private void AnimateWithDOTween(GameObject textObj, TextMeshPro tmp, float targetScale, Color finalColor)
     {
-        float duration = 1.8f;
-        float elapsed = 0f;
-        Vector3 startPos = textObj.transform.position;
-        
+        // 1. Initial Setup: Set scale to zero so it can pop up
         textObj.transform.localScale = Vector3.zero;
 
-        while (elapsed < duration && textObj != null)
+        // Create a DOTween Sequence to chain animations step-by-step
+        Sequence seq = DOTween.Sequence();
+
+        // PHASE 1: Pop Up & Color Flash (0.4 Seconds)
+        // The text springs up using Ease.OutBack, giving it a bouncy, juicy feel.
+        seq.Append(textObj.transform.DOScale(targetScale, 0.4f).SetEase(Ease.OutBack));
+        
+        if (tmp != null)
         {
-            float t = elapsed / duration;
-
-            // FAZ 1: Explosion and Bursting Out of the Screen (0% - 15%)
-            if (t < 0.15f)
-            {
-                float popT = t / 0.15f;
-                float currentScale = Mathf.Lerp(0f, targetScale * 1.5f, popT);
-                textObj.transform.localScale = new Vector3(currentScale, currentScale, 1f);
-            }
-            // FAZ 2: Spring-back and Discoloration (15% - 30%)
-            else if (t < 0.3f)
-            {
-                float settleT = (t - 0.15f) / 0.15f;
-                if (tmp != null) tmp.color = Color.Lerp(Color.white, finalColor, settleT);
-                float currentScale = Mathf.Lerp(targetScale * 1.5f, targetScale, settleT);
-                textObj.transform.localScale = new Vector3(currentScale, currentScale, 1f);
-            }
-            // FAZ 3: Hovering in the Air, Trembling, and Rising (30% - 80%)
-            else if (t < 0.8f)
-            {
-                float floatT = (t - 0.3f) / 0.5f;
-                float wobbleRot = Mathf.Sin(floatT * Mathf.PI * 6f) * 3f; // +/- 3 degree gentle swaying
-                textObj.transform.rotation = Quaternion.Euler(0, 0, wobbleRot);
-                textObj.transform.position = startPos + new Vector3(0, floatT * 0.8f, 0);
-            }
-            // FAZ 4: Accelerating and Fading Out (80% - 100%)
-            else
-            {
-                float fadeT = (t - 0.8f) / 0.2f;
-                textObj.transform.rotation = Quaternion.Euler(0, 0, 0);
-                textObj.transform.position += new Vector3(0, Time.deltaTime * 5f, 0);
-                textObj.transform.localScale = Vector3.Lerp(Vector3.one * targetScale, Vector3.zero, fadeT);
-                
-                if (tmp != null)
-                {
-                    Color c = tmp.color;
-                    c.a = Mathf.Lerp(1f, 0f, fadeT);
-                    tmp.color = c;
-                }
-            }
-
-            elapsed += Time.deltaTime;
-            yield return null;
+            // Smoothly transition from white to the combo quality color while popping up
+            seq.Join(tmp.DOColor(finalColor, 0.4f));
         }
 
-        if (textObj != null) Destroy(textObj);
+        // PHASE 2: Wait (1 Second)
+        // Keep the text on screen for 1 second so the player can read the combo.
+        seq.AppendInterval(1f);
+
+        // PHASE 3: Float Up & Fade Out (0.5 Seconds)
+        // Move the text up slightly and fade the alpha to 0 simultaneously.
+        seq.Append(textObj.transform.DOMoveY(textObj.transform.position.y + 1.5f, 0.5f).SetEase(Ease.InQuad));
+        
+        if (tmp != null)
+        {
+            seq.Join(tmp.DOFade(0f, 0.5f));
+        }
+
+        // Slightly shrink it back down while fading out for a clean exit
+        seq.Join(textObj.transform.DOScale(targetScale * 0.8f, 0.5f));
+
+        // PHASE 4: Cleanup
+        // Destroy the GameObject once the entire sequence is complete to free memory.
+        seq.OnComplete(() =>
+        {
+            if (textObj != null) Destroy(textObj);
+        });
     }
 }
