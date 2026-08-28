@@ -8,6 +8,10 @@ public class AudioManager : MonoBehaviour
     public AudioSource sfxSource;
     public AudioSource loopingSfxSource;
     public AudioClip ShuffleExplosion;       // Sound effect for the shuffle explosion
+    public AudioSource musicSource;
+
+    [Header("Music")]
+    public AudioClip OST;   // Background music clip
 
     [Header("SFX Clips")]
     public AudioClip jellyPopSound;      // Normal Jelly Pop Sound
@@ -30,11 +34,23 @@ public class AudioManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            PlayMusic();
         }
         else
         {
             Destroy(gameObject);
         }
+    }
+
+    public void PlayMusic()
+    {
+        if (OST == null || musicSource == null) return;
+
+        musicSource.clip = OST;
+        musicSource.loop = true;
+        musicSource.volume = 0.25f;
+        musicSource.Play();
     }
 
     //Play a sound effect with optional pitch and volume adjustments
@@ -49,7 +65,7 @@ public class AudioManager : MonoBehaviour
     // Play combo quality sound based on the number of jellies matched
     public void PlayComboQualitySound(int jellyCount)
     {
-        if (jellyCount < 5) return;
+        if (jellyCount < 5);
             PlaySFX(jellyPopSound, 1.0f);
         if (jellyCount >= 5 && jellyCount <= 6)
             PlaySFX(normalComboSound, 1.0f);
