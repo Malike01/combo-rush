@@ -1,68 +1,80 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro; // Yazılar için TextMeshPro kullanıyoruz
+using TMPro;
 using System.Collections.Generic;
+using System.Linq;
 
 public class LevelManager : MonoBehaviour
 {
-    public static LevelManager Instance; // Her yerden kolayca ulaşmak için
+    public static LevelManager Instance;
 
-    [Header("Level Data")]
-    public List<LevelData> allLevels;    // Tüm bölümlerin listesi
-    public int currentLevelIndex = 0;    // Şu an oynanan bölümün sırası
+    [Header("Level Data (Otomatik Yüklenir)")]
+    public List<LevelData> allLevels = new List<LevelData>();    
+    public int currentLevelIndex = 0;    
 
-    [Header("References")]
-    public BoardManager boardManager;    // Tahtayı çizen sistem
+    [Header("Extra Task Tracking")]
+    public bool isExtraTaskCompleted = false;
 
     [Header("UI - Oynanış Ekranı")]
-    public TextMeshProUGUI currentLevelText; // Tepede "Level 1" yazacak metin
-
+    public TextMeshProUGUI currentLevelText; 
+    public TextMeshProUGUI extraTaskText;
+    
     [Header("UI - Seviye Seçim Menüsü")]
-    public GameObject levelSelectionPanel;   // Bölümleri gösteren ana panel
-    public Transform levelButtonContainer;   // Butonların içine dizileceği obje (Grid Layout)
-    public GameObject levelButtonPrefab;     // Her bir bölüm için üretilecek buton
+    public GameObject levelSelectionPanel;   
+    public Transform levelButtonContainer;   
+    public GameObject levelButtonPrefab;     
+
+    private bool isComboSubTaskDone = false;
+    private int currentVariantCount = 0;
 
     void Awake()
     {
-        // Singleton mantığı: Sistemin tek bir LevelManager ile çalışmasını sağlar
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        LoadAllLevelsAutomatically();
     }
 
     void Start()
     {
         GenerateLevelUI();
-        StartLevel(currentLevelIndex);
+        StartLevel(PlayerPrefs.GetInt("LastPlayedLevel", 0)); 
     }
 
-    // İstenilen bölümü başlatan ana fonksiyon
+    private void LoadAllLevelsAutomatically()
+    {
+        LevelData[] loadedLevels = Resources.LoadAll<LevelData>("Levels");
+        allLevels = loadedLevels.OrderBy(l => l.levelNumber).ToList();
+        
+        if(allLevels.Count == 0)
+        {
+            Debug.LogError("Resources/Levels folder is empty or no LevelData assets found. Please add LevelData assets to this folder.");
+        }
+    }
+
     public void StartLevel(int index)
     {
-        if (index >= allLevels.Count)
-        {
-            Debug.Log("Tebrikler, tüm bölümler bitti!");
-            return;
-        }
+        if (index >= allLevels.Count) return;
 
         currentLevelIndex = index;
+        PlayerPrefs.SetInt("LastPlayedLevel", currentLevelIndex);
+        
         LevelData levelToLoad = allLevels[currentLevelIndex];
+
+        // New: Reset the extra task completion status when starting a new level
+        isExtraTaskCompleted = (levelToLoad.taskType == ExtraTaskType.None);
 
         UpdateLevelDisplay(levelToLoad);
 
-        // Tahtayı yeni bölüme göre sıfırla ve çiz
-        boardManager.LoadLevel(levelToLoad);
+        if (BoardManager.Instance != null)
+            BoardManager.Instance.LoadLevel(levelToLoad);
     }
 
     public void SetCurrentLevel(LevelData level)
     {
         if (level == null) return;
-
         int index = allLevels.FindIndex(item => item == level);
-        if (index >= 0)
-        {
-            currentLevelIndex = index;
-        }
-
+        if (index >= 0) currentLevelIndex = index;
         UpdateLevelDisplay(level);
     }
 
@@ -70,56 +82,101 @@ public class LevelManager : MonoBehaviour
     {
         LevelData targetLevel = level != null ? level : (currentLevelIndex >= 0 && currentLevelIndex < allLevels.Count ? allLevels[currentLevelIndex] : null);
 
-        if (currentLevelText != null && targetLevel != null)
+        if (targetLevel != null)
         {
-            currentLevelText.text = "Level " + targetLevel.levelNumber;
-        }
-        else if (currentLevelText != null)
-        {
-            currentLevelText.text = "Level 1";
-        }
-    }
-
-    // Puan kazanıldığında bu fonksiyon çağrılacak
-    public void CheckLevelProgress(int currentScore)
-    {
-        LevelData currentLevelData = allLevels[currentLevelIndex];
-
-        if (currentScore >= currentLevelData.targetScore)
-        {
-            Debug.Log("Bölüm Tamamlandı! Diğer levele geçiliyor...");
-            NextLevel();
+            if (currentLevelText != null) currentLevelText.text = "Level " + targetLevel.levelNumber;
+            
+            if (extraTaskText != null)
+            {
+                extraTaskText.text = targetLevel.taskType == ExtraTaskType.None ? "Ek Görev Yok" : targetLevel.taskDescription;
+                extraTaskText.color = isExtraTaskCompleted ? Color.green : Color.white;
+            }
         }
     }
 
-    private void NextLevel()
+    //This method checks if the extra task for the current level is completed based on the provided parameters.
+    public void ProcessExtraTask(int matchCount, int colorIndex, bool hasMysteryCoin, int maxVariantMatched)
     {
-        currentLevelIndex++;
-        
+        if (isExtraTaskCompleted || currentLevelIndex >= allLevels.Count) return;
 
-        StartLevel(currentLevelIndex);
+        LevelData currentLevel = allLevels[currentLevelIndex];
+
+        switch (currentLevel.taskType)
+        {
+            case ExtraTaskType.ReachComboCount:
+                if (matchCount >= currentLevel.taskTargetValue) isExtraTaskCompleted = true;
+                break;
+
+            case ExtraTaskType.SpecificColorCombo:
+                if (colorIndex == currentLevel.taskSecondaryValue && matchCount >= currentLevel.taskTargetValue) isExtraTaskCompleted = true;
+                break;
+
+            case ExtraTaskType.IncludeMysteryCoin:
+                if (hasMysteryCoin) isExtraTaskCompleted = true;
+                break;
+
+            case ExtraTaskType.MatchSpecificVariant:
+                if (maxVariantMatched >= currentLevel.taskTargetValue)
+                {
+                    currentVariantCount++;
+                    if (currentVariantCount >= currentLevel.taskSecondaryValue) isExtraTaskCompleted = true;
+                }
+                break;
+
+            // NEW: Dual Task Evaluation (e.g., Level 14: 1x 10-Combo AND 2x V2)
+            case ExtraTaskType.ComboAndVariant:
+                // Check Combo requirement (taskTargetValue = 10)
+                if (matchCount >= currentLevel.taskTargetValue)
+                {
+                    isComboSubTaskDone = true;
+                }
+
+                // Check Variant requirement (V2 variant = 1, required count = taskSecondaryValue = 2)
+                if (maxVariantMatched >= 1)
+                {
+                    currentVariantCount++;
+                }
+
+                // Both conditions must be met
+                if (isComboSubTaskDone && currentVariantCount >= currentLevel.taskSecondaryValue)
+                {
+                    isExtraTaskCompleted = true;
+                }
+                break;
+        }
+
+        if (isExtraTaskCompleted && extraTaskText != null) extraTaskText.color = Color.green;
+    }
+    public void LevelCompletedSuccess()
+    {
+        int nextLevelNum = currentLevelIndex + 2; 
+        int maxUnlocked = PlayerPrefs.GetInt("MaxUnlockedLevel", 1);
+        if (nextLevelNum > maxUnlocked)
+        {
+            PlayerPrefs.SetInt("MaxUnlockedLevel", nextLevelNum);
+        }
     }
 
     private void GenerateLevelUI()
     {
         if (levelButtonPrefab == null || levelButtonContainer == null) return;
 
-        foreach (Transform child in levelButtonContainer)
-        {
-            Destroy(child.gameObject);
-        }
+        foreach (Transform child in levelButtonContainer) Destroy(child.gameObject);
+
+        int maxUnlocked = PlayerPrefs.GetInt("MaxUnlockedLevel", 1);
 
         for (int i = 0; i < allLevels.Count; i++)
         {
-            int lvlIndex = i; // Listener için indexi kopyalıyoruz
+            int lvlIndex = i; 
             GameObject btnObj = Instantiate(levelButtonPrefab, levelButtonContainer);
             
             TextMeshProUGUI btnText = btnObj.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null) btnText.text = (i + 1).ToString();
+            if (btnText != null) btnText.text = allLevels[i].levelNumber.ToString();
 
             Button btn = btnObj.GetComponent<Button>();
             if (btn != null)
             {
+                btn.interactable = (i < maxUnlocked); // Locked levels are not interactable
                 btn.onClick.AddListener(() => {
                     StartLevel(lvlIndex);
                     ToggleLevelPanel();

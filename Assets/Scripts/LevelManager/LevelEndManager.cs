@@ -5,36 +5,26 @@ public class LevelEndManager : MonoBehaviour
 {
     public static LevelEndManager Instance;
 
-    [Header("Paneller")]
-    [Tooltip("Şu an ekranda gördüğün ana bölüm sonu paneli")]
+    [Header("Panels")]
     public GameObject levelEndPanel; 
-
-    [Header("Durum İçerikleri (LevelEndPanel İçinde)")]
-    [Tooltip("Kazanma durumunda aktif olacak UI objesi (Grup)")]
     public GameObject winContentGroup; 
-    [Tooltip("Kaybetme durumunda aktif olacak UI objesi (Grup)")]
     public GameObject loseContentGroup;
 
-    [Header("Win (Kazanma) Ekranı Yazıları")]
+    [Header("Win UI")]
     public TextMeshProUGUI winTitleText;          
     public TextMeshProUGUI winStarsText;          
     public TextMeshProUGUI winScoreAndComboText;   
     public TextMeshProUGUI winNextLevelTargetText; 
 
-    [Header("Lose (Kaybetme) Ekranı Yazıları")]
+    [Header("Lose UI")]
     public TextMeshProUGUI loseMotivationText;     
     public TextMeshProUGUI loseScoreAndComboText;  
     public TextMeshProUGUI loseTargetInfoText;    
 
-    [Header("Oyun Sistem Referansları")]
+    [Header("References")]
     public ComboTimerManager timerManager; 
     public BoardManager boardManager; 
 
-    [Header("Level Yönetimi")]
-    public LevelData currentLevel; 
-    public LevelData nextLevel; 
-
-    private bool isLevelWon = false; 
     public bool IsLevelEnded { get; private set; } = false;
 
     private void Awake()
@@ -60,54 +50,33 @@ public class LevelEndManager : MonoBehaviour
         EvaluateLevelResults();
     }
 
-  private void EvaluateLevelResults()
+    private void EvaluateLevelResults()
     {
-        LevelData activeLevel = currentLevel != null ? currentLevel : (boardManager != null ? boardManager.currentLevel : null);
+        LevelData activeLevel = LevelManager.Instance.allLevels[LevelManager.Instance.currentLevelIndex];
 
-        if (activeLevel == null)
-        {
-            Debug.LogError("PANEL AÇILAMIYOR: Aktif bir Bölüm (LevelData) verisi bulunamadı! Oyun hedefleri okuyamıyor.");
-            return;
-        }
-
-        if (ScoreManager.Instance == null)
-        {
-            Debug.LogError("PANEL AÇILAMIYOR: Sahnede ScoreManager objesi bulunamadı!");
-            return;
-        }
-        
-        if (winContentGroup == null || loseContentGroup == null)
-        {
-            Debug.LogError("PANEL AÇILAMIYOR: Win veya Lose grup objeleri Inspector'da atanmamış!");
-            return;
-        }
-        // ----------------------------------------------
+        if (activeLevel == null || ScoreManager.Instance == null) return;
 
         int currentScore = ScoreManager.Instance.currentScore;
         int maxCombo = ScoreManager.Instance.maxComboReached;
 
         int targetScore = activeLevel.targetScore;
-        int targetCombo = activeLevel.targetCombo;
+        bool isTaskCompleted = LevelManager.Instance.isExtraTaskCompleted;
 
-        // Win condition: Both score and combo must meet or exceed the targets
-        if (currentScore >= targetScore && maxCombo >= targetCombo)
+        if (currentScore >= targetScore && isTaskCompleted)
         {
-            isLevelWon = true;
-            SetupWinScreen(currentScore, maxCombo);
+            LevelManager.Instance.LevelCompletedSuccess(); 
+            SetupWinScreen(currentScore, maxCombo, activeLevel);
         }
         else
         {
-            isLevelWon = false;
-            SetupLoseScreen(targetScore, targetCombo, currentScore, maxCombo);
+            SetupLoseScreen(targetScore, currentScore, maxCombo, activeLevel, isTaskCompleted);
         }
     }
 
-    private void SetupWinScreen(int currentScore, int maxCombo)
+    private void SetupWinScreen(int currentScore, int maxCombo, LevelData activeLevel)
     {
         if (winContentGroup != null) winContentGroup.SetActive(true);
         if (loseContentGroup != null) loseContentGroup.SetActive(false);
-
-        LevelData activeLevel = currentLevel != null ? currentLevel : boardManager.currentLevel;
         
         int stars = 1;
         if (currentScore >= activeLevel.targetScore * 2) stars = 3; 
@@ -121,13 +90,16 @@ public class LevelEndManager : MonoBehaviour
         }
 
         if (winStarsText != null) winStarsText.text = $"{stars} YILDIZ!";
-        if (winScoreAndComboText != null) winScoreAndComboText.text = $"Toplanan: {currentScore} Coin | Kombo: x{maxCombo}";
+        if (winScoreAndComboText != null) winScoreAndComboText.text = $"Toplanan: {currentScore} Coin | Maks Kombo: x{maxCombo}";
 
         if (winNextLevelTargetText != null)
         {
-            if (nextLevel != null)
+            int nextIndex = LevelManager.Instance.currentLevelIndex + 1;
+            if (nextIndex < LevelManager.Instance.allLevels.Count)
             {
-                winNextLevelTargetText.text = $"Sıradaki Hedef:\n{nextLevel.targetScore} Coin & x{nextLevel.targetCombo} Kombo";
+                LevelData nextLvl = LevelManager.Instance.allLevels[nextIndex];
+                string nextTask = nextLvl.taskType != ExtraTaskType.None ? $"\nEk Görev: {nextLvl.taskDescription}" : "";
+                winNextLevelTargetText.text = $"Sıradaki Hedef:\n{nextLvl.targetScore} Puan{nextTask}";
             }
             else
             {
@@ -136,46 +108,43 @@ public class LevelEndManager : MonoBehaviour
         }
     }
 
-    private void SetupLoseScreen(int targetScore, int targetCombo, int currentScore, int maxCombo)
+    private void SetupLoseScreen(int targetScore, int currentScore, int maxCombo, LevelData activeLevel, bool isTaskCompleted)
     {
         if (winContentGroup != null) winContentGroup.SetActive(false);
         if (loseContentGroup != null) loseContentGroup.SetActive(true);
 
-        if (loseMotivationText != null) loseMotivationText.text = "Pes Etmek Yok, Tekrar Dene!";
-        if (loseScoreAndComboText != null) loseScoreAndComboText.text = $"Toplanan: {currentScore} Coin | Kombo: x{maxCombo}";
-        if (loseTargetInfoText != null) loseTargetInfoText.text = $"Bölüm Hedefi:\n{targetScore} Coin & x{targetCombo} Kombo";
+        if (loseMotivationText != null) 
+        {
+            if (currentScore < targetScore) loseMotivationText.text = "Hedef Puana Ulaşamadın!";
+            else loseMotivationText.text = "Ek Görevi Tamamlayamadın!";
+        }
+
+        if (loseScoreAndComboText != null) loseScoreAndComboText.text = $"Toplanan: {currentScore} / {targetScore}";
+        
+        if (loseTargetInfoText != null) 
+        {
+            string taskInfo = activeLevel.taskType != ExtraTaskType.None ? $"\nGörev Durumu: {(isTaskCompleted ? "Başarılı" : "Başarısız")}" : "";
+            loseTargetInfoText.text = $"Bölüm Hedefi: {targetScore} Puan{taskInfo}";
+        }
     }
 
     public void OnClickClosePanel()
     {
         IsLevelEnded = false;
-
         if (levelEndPanel != null) levelEndPanel.SetActive(false); 
 
-        LevelData activeLevel;
-        if (isLevelWon && nextLevel != null)
+        bool won = winContentGroup.activeSelf;
+        if (won)
         {
-            activeLevel = nextLevel;
-            currentLevel = nextLevel;
+            int nextIdx = LevelManager.Instance.currentLevelIndex + 1;
+            LevelManager.Instance.StartLevel(nextIdx);
         }
         else
         {
-            activeLevel = currentLevel != null ? currentLevel : boardManager.currentLevel;
-        }
-
-        if (boardManager != null)
-        {
-            boardManager.LoadLevel(activeLevel);
+            LevelManager.Instance.StartLevel(LevelManager.Instance.currentLevelIndex);
         }
 
         if (timerManager != null) timerManager.ResetTimerFull(); 
-        
         if (ScoreManager.Instance != null) ScoreManager.Instance.ResetLevelData();
-
-        if (LevelManager.Instance != null)
-        {
-            LevelManager.Instance.SetCurrentLevel(activeLevel);
-        }
     }
-
 }

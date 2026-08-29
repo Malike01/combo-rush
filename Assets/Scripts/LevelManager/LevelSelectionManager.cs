@@ -16,16 +16,16 @@ public class LevelSelectionManager : MonoBehaviour
     public Color unlockedColor = Color.white;
     public Color lockedColor = new Color(0.2f, 0.2f, 0.2f, 1f); 
 
-    [Header("Level Ayarları")]
-    public int maxLevelInGame = 100; 
-    
     private int maxUnlockedLevel = 1; 
     private int currentlyDisplayedLevel = 1;
+
+    private int MaxLevelInGame => LevelManager.Instance.allLevels.Count;
 
     private void Start()
     {
         leftButton.onClick.AddListener(DecreaseLevel);
         rightButton.onClick.AddListener(IncreaseLevel);
+        playButton.onClick.AddListener(PlaySelectedLevel);
         
         levelDropdown.onValueChanged.AddListener(OnDropdownLevelSelected);
     }
@@ -33,9 +33,7 @@ public class LevelSelectionManager : MonoBehaviour
     public void OpenPopup()
     {
         popupPanel.SetActive(true);
-        
-        maxUnlockedLevel = 5; 
-        
+        maxUnlockedLevel = PlayerPrefs.GetInt("MaxUnlockedLevel", 1); 
         currentlyDisplayedLevel = maxUnlockedLevel;
         
         SetupDropdown();
@@ -45,6 +43,12 @@ public class LevelSelectionManager : MonoBehaviour
     public void ClosePopup()
     {
         popupPanel.SetActive(false);
+    }
+
+    private void PlaySelectedLevel()
+    {
+        LevelManager.Instance.StartLevel(currentlyDisplayedLevel - 1); 
+        ClosePopup();
     }
 
     private void DecreaseLevel()
@@ -58,7 +62,7 @@ public class LevelSelectionManager : MonoBehaviour
 
     private void IncreaseLevel()
     {
-        if (currentlyDisplayedLevel < maxLevelInGame)
+        if (currentlyDisplayedLevel < MaxLevelInGame)
         {
             currentlyDisplayedLevel++;
             UpdateUI();
@@ -81,7 +85,7 @@ public class LevelSelectionManager : MonoBehaviour
         playButton.interactable = isUnlocked;
 
         leftButton.interactable = currentlyDisplayedLevel > 1;
-        rightButton.interactable = currentlyDisplayedLevel < maxLevelInGame;
+        rightButton.interactable = currentlyDisplayedLevel < MaxLevelInGame;
     }
 
     private void SetupDropdown()
@@ -89,7 +93,7 @@ public class LevelSelectionManager : MonoBehaviour
         levelDropdown.ClearOptions();
         List<string> levelOptions = new List<string>();
 
-        for (int i = 1; i <= maxLevelInGame; i++)
+        for (int i = 1; i <= MaxLevelInGame; i++)
         {
             string optionText = (i <= maxUnlockedLevel) ? "Level " + i : "Level " + i + " (Kilitli)";
             levelOptions.Add(optionText);

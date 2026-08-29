@@ -30,5 +30,5 @@ MonoBehaviour:
     111111
 
     111111'
-  targetScore: 50
-  targetCombo: 5
+  targetScore: 250
+  targetCombo: 11

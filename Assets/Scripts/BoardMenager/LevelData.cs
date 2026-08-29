@@ -1,21 +1,31 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "Level_", menuName = "ComboRush/Yeni Seviye (Level Data)")]
+public enum ExtraTaskType
+{
+    None,
+    ReachComboCount,        // Exp:  Make x5 Combo 
+    IncludeMysteryCoin,     // Exp:  Include Mystery Coin in Combo
+    MatchSpecificVariant,   // Exp:  Match Specific Variant
+    SpecificColorCombo,     // Exp:  Match Specific Color Combo
+    ComboAndVariant        // Exp:  Make x5 Combo with Specific Variant
+}
+
+[CreateAssetMenu(fileName = "Level_", menuName = "JellyMatch/Level Data")]
 public class LevelData : ScriptableObject
 {
-    [Header("Seviye Temel Bilgileri")]
+    [Header("Basic Settings")]
     public int levelNumber;
+    public int targetScore; // Target score to win the level
 
-    [Header("Grid Boyutları")]
+    [Header("Extra Task (Ek Görev)")]
+    public string taskDescription = "-"; 
+    public ExtraTaskType taskType = ExtraTaskType.None;
+    public int taskTargetValue = 0;    // Exp:  Target value for the extra task
+    public int taskSecondaryValue = 0; // Exp:  Secondary value for the extra task
+
+    [Header("Grid Design")]
     public int gridWidth = 6;
     public int gridHeight = 8;
-
-    [Header("Özel Tahta Şekli (Harita)")]
-    [Tooltip("1: Hücre var (Coin düşer), 0: Hücre yok (Boşluk/Engel). Aşağıdan yukarıya doğru çalışır.")]
-    [TextArea(3, 15)]
-    public string gridLayout; 
-
-    [Header("Win Conditions (Kazanma Koşulları)")]
-    public int targetScore;
-    public int targetCombo;
+    [TextArea(3, 5)]
+    public string gridLayout;
 }

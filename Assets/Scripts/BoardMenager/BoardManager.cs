@@ -8,7 +8,7 @@ using DG.Tweening;
 public struct JellyTheme
 {
     public string themeName; 
-    [Tooltip("Index Maps -> 0: 5, 1: 10, 2: 15, 3: 20, 4: 25(Ultra), 5: Mystery(?)")]
+    [Tooltip("Index Maps -> 0: 5, 1: 10, 2: 15, 3: 20, 4: 25(Ultra), 5: Variant6, 6: Mystery(?)")]
     public Sprite[] progressionSprites; 
 }
 
@@ -16,10 +16,10 @@ public struct JellyTheme
 [System.Serializable]
 public struct CoinDropData
 {
-    public string dropName;      // Identifier for the Inspector (e.g., "Normal 5", "Ultra 25")
-    public int pointValue;       // The actual score value of the coin (5, 10, 15, 20, 25, 0 for Mystery)
-    public int spriteIndex;      // Which sprite index to use from the JellyTheme's progressionSprites array
-    public float dropWeight;     // The probability weight (higher = more frequent)
+    public string dropName;      
+    public int pointValue;       
+    public int spriteIndex;      
+    public float dropWeight;     
 }
 
 public partial class BoardManager : MonoBehaviour
@@ -28,6 +28,11 @@ public partial class BoardManager : MonoBehaviour
     public int width = 6;
     public int height = 8;
     public float spacing = 1.2f;
+    [Tooltip("The player must reach level 5 or higher for Mystery coins to spawn.")]
+    public int currentPlayerLevel = 1;
+
+    [Header("Score Settings (Algorithmic Increase)")]
+    public float comboMultiplierStep = 0.25f; // Each extra coin after the 4th multiplies the score by this step (+25%)
 
     [Header("Level Data")]
     public LevelData currentLevel;
@@ -38,7 +43,6 @@ public partial class BoardManager : MonoBehaviour
 
     [Header("Jelly Themes & Drop Rates")]
     public JellyTheme[] jellyThemes;
-    [Tooltip("Define the probabilities and values for 5, 10, 15, 20, 25(Ultra) and ?(Mystery)")]
     public CoinDropData[] coinDropSettings; 
 
     [Header("Grid Visuals")]
@@ -63,7 +67,6 @@ public partial class BoardManager : MonoBehaviour
 
     void Start()
     {
-        // Null checks for crucial references before starting
         if (coinPrefab == null || jellyThemes == null || jellyThemes.Length == 0)
         {
             Debug.LogError("BoardManager: Missing Prefab or Coin Themes array!");
@@ -76,7 +79,6 @@ public partial class BoardManager : MonoBehaviour
         }
 
         board = new Coin[width, height];
-
         ResetHintTimer();
     }
 
@@ -90,7 +92,7 @@ public partial class BoardManager : MonoBehaviour
         GenerateBoard();
     }
 
-   public void GenerateBoard()
+    public void GenerateBoard()
     {
         if (currentLevel != null)
         {
@@ -142,14 +144,12 @@ public partial class BoardManager : MonoBehaviour
                 SpawnJellyAt(x, y, new Vector3(pos.x, pos.y, -1f));
             }
         }
-
     }
 
     private void ParseGridLayout()
     {
         activeCells = new bool[width, height];
 
-        // If no layout is provided, make all cells active (rectangular grid)
         if (currentLevel == null || string.IsNullOrWhiteSpace(currentLevel.gridLayout))
         {
             for (int x = 0; x < width; x++)
@@ -158,35 +158,38 @@ public partial class BoardManager : MonoBehaviour
             return;
         }
 
-        string cleanLayout = currentLevel.gridLayout.Replace("\n", "").Replace("\r", "").Replace(" ", "");
+        // Safely split the layout string by line breaks
+        string[] rows = currentLevel.gridLayout.Split(new char[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries);
 
-        int charIndex = 0;
-        for (int y = height - 1; y >= 0; y--)
+        for (int y = 0; y < height; y++)
         {
+            int rowIndex = (height - 1) - y;
+
             for (int x = 0; x < width; x++)
             {
-                if (charIndex < cleanLayout.Length)
+                // Check if the character exists safely
+                if (rowIndex >= 0 && rowIndex < rows.Length && x < rows[rowIndex].Length)
                 {
-                    activeCells[x, y] = (cleanLayout[charIndex] == '1');
-                    charIndex++;
+                    activeCells[x, y] = (rows[rowIndex][x] == '1');
                 }
                 else
                 {
-                    activeCells[x, y] = false; 
+                    activeCells[x, y] = false;
                 }
             }
         }
     }
-    
+
     void CreateBoardBackground()
     {
         if (boardBackgroundPrefab == null) return;
 
         Vector3 centerPos = GetWorldPosition((width - 1) / 2f, (height - 1) / 2f);
-        float paddingX = 1f; 
-        float paddingY = 1f; 
-        float totalWidth = (52 * spacing) + paddingX;
-        float totalHeight = (62 * spacing) + paddingY;
+        float paddingX = 0.6f; 
+        float paddingY = 0.6f; 
+        
+        float totalWidth = (width * spacing * 9) + paddingX;
+        float totalHeight = (height * spacing * 7) + paddingY;
 
         Vector3 bgPos = new Vector3(centerPos.x, centerPos.y, 0.5f);
         GameObject bgObj = Instantiate(boardBackgroundPrefab, bgPos, Quaternion.identity, gridParent);
@@ -196,11 +199,10 @@ public partial class BoardManager : MonoBehaviour
         SpriteRenderer sr = bgObj.GetComponent<SpriteRenderer>();
         if (sr != null)
         {
-            sr.color = new Color(1f, 1f, 1f, 0.35f);
+            sr.color = new Color(1f, 1f, 1f, 0.4f);
             sr.sortingOrder = 1;
         }
     }
-
     public Vector3 GetWorldPosition(float x, float y)
     {
         float localX = -((width - 1) * spacing) / 2f + (x * spacing);
@@ -210,25 +212,31 @@ public partial class BoardManager : MonoBehaviour
         return new Vector3(localX + parentPos.x, localY + parentPos.y, 0f);
     }
 
-    // Determines the drop type based on the assigned weights in the Inspector
+    // --- Level-Sensitive Random Drop Manager ---
     private CoinDropData GetRandomCoinDropData()
     {
         if (coinDropSettings == null || coinDropSettings.Length == 0)
         {
-            // Fallback in case settings are missing
             return new CoinDropData { pointValue = 10, spriteIndex = 0, dropWeight = 1f };
         }
 
         float totalWeight = 0f;
+        List<CoinDropData> availableDrops = new List<CoinDropData>();
+
         foreach (var drop in coinDropSettings)
         {
+            // If it is a Mystery Coin (Element 6) and the player has not reached level 5, skip adding it
+            bool isMystery = drop.spriteIndex == 6; 
+            if (isMystery && currentPlayerLevel < 5) continue;
+
+            availableDrops.Add(drop);
             totalWeight += drop.dropWeight;
         }
 
         float randomVal = Random.Range(0f, totalWeight);
         float currentWeight = 0f;
 
-        foreach (var drop in coinDropSettings)
+        foreach (var drop in availableDrops)
         {
             currentWeight += drop.dropWeight;
             if (randomVal <= currentWeight)
@@ -237,29 +245,46 @@ public partial class BoardManager : MonoBehaviour
             }
         }
 
-        // Failsafe
-        return coinDropSettings[0];
+        return availableDrops.Count > 0 ? availableDrops[0] : coinDropSettings[0];
     }
 
-    private int CalculateFinalPointValue(int initialValue)
+    // --- Risk/Reward Negative Point Mystery Coin System ---
+    private int CalculateFinalPointValue(int initialValue, bool isMystery)
     {
-        if (initialValue == 0)
+        if (isMystery)
         {
-            int[] mysteryValues = new int[] { 5, 10, 15, 20 };
-            return mysteryValues[Random.Range(0, mysteryValues.Length)];
+            // 20% chance to spawn a coin that subtracts points (-)
+            bool isNegative = Random.value < 0.2f; 
+            
+            if (isNegative)
+            {
+                int[] negativeValues = { -5, -10, -25, -50 };
+                return negativeValues[Random.Range(0, negativeValues.Length)];
+            }
+            else
+            {
+                int[] positiveValues = { 10, 25, 50, 100 };
+                return positiveValues[Random.Range(0, positiveValues.Length)];
+            }
         }
         
         return initialValue;
     }
 
-    void SpawnJellyAt(int x, int y, Vector3 spawnPos)
+void SpawnJellyAt(int x, int y, Vector3 spawnPos)
     {
         // 1. Pick a random color theme
         int randomThemeIndex = Random.Range(0, jellyThemes.Length);
-        
-        // 2. Pick a random type/value based on weights
-        CoinDropData dropData = GetRandomCoinDropData();
+        JellyTheme selectedTheme = jellyThemes[randomThemeIndex];
 
+        // 2. Mystery coin check: Spawns only if level >= 5 with a 5% drop chance
+        bool isMystery = false;
+        if (currentPlayerLevel >= 5)
+        {
+            isMystery = Random.value < 0.05f; 
+        }
+
+        // 3. Instantiate coin object
         Transform parentTransform = gridParent != null ? gridParent : transform;
         GameObject coinObj = Instantiate(coinPrefab, spawnPos, Quaternion.identity, parentTransform);
         coinObj.name = $"Coin ({x},{y})";
@@ -270,22 +295,87 @@ public partial class BoardManager : MonoBehaviour
             coinScript.x = x;
             coinScript.y = y;
 
+            // Pass the entire progression sprites array so InputManager can update faces during combo
+            coinScript.progressionSprites = selectedTheme.progressionSprites;
+
+            // Standard coins ALWAYS spawn with Element 0 (Base Face)
+            // Mystery coins spawn with Element 6 (Mystery Face)
+            int initialSpriteIndex = isMystery ? 6 : 0;
+            
             Sprite selectedSprite = null;
-            // Ensure the sprite index exists in the current theme's array to prevent OutOfBounds errors
-            if (dropData.spriteIndex < jellyThemes[randomThemeIndex].progressionSprites.Length)
+            if (initialSpriteIndex < selectedTheme.progressionSprites.Length)
             {
-                selectedSprite = jellyThemes[randomThemeIndex].progressionSprites[dropData.spriteIndex];
+                selectedSprite = selectedTheme.progressionSprites[initialSpriteIndex];
             }
 
-            // Puan hesaplamasindan gecir (Mystery ise rastgele 5, 10, 15, 20 atar)
-            int finalValue = CalculateFinalPointValue(dropData.pointValue);
+            int basePoints = isMystery ? 0 : 5; // Base coins start with 5 points
+            int finalValue = CalculateFinalPointValue(basePoints, isMystery);
 
-            // Assign the correct sprite, color index, and calculated point value
-            coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue, dropData.pointValue == 0);
+            coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue, isMystery);
             board[x, y] = coinScript;
         }
     }
 
+    private IEnumerator RefillGridRoutine()
+    {
+        Transform parentTransform = gridParent != null ? gridParent : transform;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (activeCells != null && !activeCells[x, y]) continue;
+
+                if (board[x, y] == null)
+                {
+                    Vector3 spawnAbovePos = new Vector3(GetWorldPosition(x, height).x, GetWorldPosition(x, height).y, -1f); 
+                    Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
+
+                    // 1. Pick a random color theme
+                    int randomThemeIndex = Random.Range(0, jellyThemes.Length);
+                    JellyTheme selectedTheme = jellyThemes[randomThemeIndex];
+
+                    // 2. Mystery coin check
+                    bool isMystery = false;
+                    if (currentPlayerLevel >= 5)
+                    {
+                        isMystery = Random.value < 0.05f;
+                    }
+                    
+                    GameObject coinObj = Instantiate(coinPrefab, spawnAbovePos, Quaternion.identity, parentTransform);
+                    coinObj.name = $"Coin ({x},{y})";
+
+                    Coin coinScript = coinObj.GetComponent<Coin>();
+                    if (coinScript != null)
+                    {
+                        coinScript.x = x;
+                        coinScript.y = y;
+
+                        // Assign progression sprites array
+                        coinScript.progressionSprites = selectedTheme.progressionSprites;
+
+                        // Always start with Element 0 (or Element 6 for Mystery)
+                        int initialSpriteIndex = isMystery ? 6 : 0;
+
+                        Sprite selectedSprite = null;
+                        if (initialSpriteIndex < selectedTheme.progressionSprites.Length)
+                        {
+                            selectedSprite = selectedTheme.progressionSprites[initialSpriteIndex];
+                        }
+
+                        int basePoints = isMystery ? 0 : 5;
+                        int finalValue = CalculateFinalPointValue(basePoints, isMystery);
+
+                        coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue, isMystery);
+                        board[x, y] = coinScript;
+
+                        coinScript.DropToTargetPosition(targetPos, 0.4f);
+                    }
+                }
+            }
+        }
+        yield return new WaitForSeconds(0.4f);
+    }
     public void OnBoardInteractionStart()
     {
         if (ComboTimerManager.Instance != null)
@@ -305,15 +395,44 @@ public partial class BoardManager : MonoBehaviour
             ComboTimerManager.Instance.StartOrResetTimer();
         }
 
+        // --- Algorithmic Point Increase Calculation ---
+        int totalMatchValue = 0;
+        int matchCount = matchedCoins.Count;
+
+        float dynamicMultiplier = 1.0f;
+        if (matchCount >= 5)
+        {
+            dynamicMultiplier += (matchCount - 4) * comboMultiplierStep; 
+        }
+
+        bool hasMystery = false;
+        int colorIndex = matchedCoins[0].colorIndex; 
+        int maxVariantMatched = matchCount >= 20 ? 5 : 
+                                matchCount >= 15 ? 4 : 
+                                matchCount >= 10 ? 3 : 
+                                matchCount >= 7 ? 2 : 
+                                matchCount >= 5 ? 1 : 0;
+
+        foreach (Coin coin in matchedCoins) 
+        {
+            int baseValue = coin.pointValue;
+            
+            if (!coin.isMysteryCoin && baseValue > 0)
+            {
+                baseValue = Mathf.RoundToInt(baseValue * dynamicMultiplier);
+            }
+            
+            totalMatchValue += baseValue;
+        }
+
         if (ScoreManager.Instance != null) 
         {
-            int totalMatchValue = 0;
-            foreach (Coin coin in matchedCoins) 
-            {
-                totalMatchValue += coin.pointValue;
-            }
+            ScoreManager.Instance.AddScore(totalMatchValue, matchCount);
+        }
 
-            ScoreManager.Instance.AddScore(totalMatchValue, matchedCoins.Count);
+        if (LevelManager.Instance != null)
+        {
+            LevelManager.Instance.ProcessExtraTask(matchCount, colorIndex, hasMystery, maxVariantMatched);
         }
 
         Vector3 burstPoint = matchedCoins[matchedCoins.Count - 1].transform.position;
@@ -322,11 +441,11 @@ public partial class BoardManager : MonoBehaviour
 
         if (matchedCoins.Count >= 5)
         {
-            float sarsintiSiddeti = 0.1f + (matchedCoins.Count * 0.02f); // Taş sayısına göre şiddet artar
+            float shakeIntensity = 0.1f + (matchedCoins.Count * 0.02f);
             
             if (CameraShake.Instance != null)
             {
-                CameraShake.Instance.TriggerShake(0.3f, sarsintiSiddeti, 25);
+                CameraShake.Instance.TriggerShake(0.3f, shakeIntensity, 25);
             }
         }
 
@@ -403,73 +522,5 @@ public partial class BoardManager : MonoBehaviour
             }
         }
         yield return new WaitForSeconds(0.3f);
-    }
-
-    private IEnumerator RefillGridRoutine()
-    {
-        Transform parentTransform = gridParent != null ? gridParent : transform;
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                if (activeCells != null && !activeCells[x, y]) continue;
-
-                if (board[x, y] == null)
-                {
-                    Vector3 spawnAbovePos = new Vector3(GetWorldPosition(x, height).x, GetWorldPosition(x, height).y, -1f); 
-                    Vector3 targetPos = new Vector3(GetWorldPosition(x, y).x, GetWorldPosition(x, y).y, -1f);
-
-                    // 1. Pick random color
-                    int randomThemeIndex = Random.Range(0, jellyThemes.Length);
-                    
-                    // 2. Pick random type/value based on weights
-                    CoinDropData dropData = GetRandomCoinDropData();
-                    
-                    GameObject coinObj = Instantiate(coinPrefab, spawnAbovePos, Quaternion.identity, parentTransform);
-                    coinObj.name = $"Coin ({x},{y})";
-
-                    Coin coinScript = coinObj.GetComponent<Coin>();
-                    if (coinScript != null)
-                    {
-                        coinScript.x = x;
-                        coinScript.y = y;
-
-                        Sprite selectedSprite = null;
-                        if (dropData.spriteIndex < jellyThemes[randomThemeIndex].progressionSprites.Length)
-                        {
-                            selectedSprite = jellyThemes[randomThemeIndex].progressionSprites[dropData.spriteIndex];
-                        }
-
-                        // Puan hesaplamasindan gecir (Mystery ise rastgele atar)
-                        int finalValue = CalculateFinalPointValue(dropData.pointValue);
-
-                        // Set the specific data for the spawned coin
-                        coinScript.SetupCoin(selectedSprite, randomThemeIndex, finalValue, dropData.pointValue == 0);
-                        board[x, y] = coinScript;
-
-                        coinScript.DropToTargetPosition(targetPos, 0.4f);
-
-                    }
-                }
-            }
-        }
-        yield return new WaitForSeconds(0.4f);
-    }
-
-    private IEnumerator SmoothMove(Transform target, Vector3 endPos, float duration)
-    {
-        Vector3 startPos = target.position;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            if (target == null) yield break;
-            target.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        if (target != null) target.position = endPos;
     }
 }

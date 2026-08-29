@@ -7,10 +7,10 @@ public class ScoreManager : MonoBehaviour
     public static ScoreManager Instance { get; private set; }
 
     [Header("UI Elements")]
-    public TextMeshProUGUI scoreText;      // Text (TMP) inside TopPanel[cite: 2]
-    public TextMeshProUGUI comboText;      // Text (TMP) inside BottomPanel[cite: 2]
-    public TextMeshProUGUI comboTitleText; // YENI: "Good Run", "Legendary Run"
-    public TextMeshProUGUI endComboText;   // Text (TMP) for the end-of-level summary[cite: 2]
+    public TextMeshProUGUI scoreText;      // Text (TMP) inside TopPanel
+    public TextMeshProUGUI comboText;      // Text (TMP) inside BottomPanel
+    public TextMeshProUGUI comboTitleText; // e.g., "Good Run", "Legendary Run"
+    public TextMeshProUGUI endComboText;   // Text (TMP) for the end-of-level summary
 
     [Header("Target Visual Settings")]
     public Color defaultColor = new Color(1f, 0.95f, 0.65f, 1f);
@@ -23,14 +23,14 @@ public class ScoreManager : MonoBehaviour
 
     public Color successColor = new Color(0.28f, 1f, 0.44f, 1f);
 
-    // --- OYUNCU VERILERI ---
-    public int currentScore { get; private set; } = 0; // Win/Lose kontrolu icin disariya acik, ama sadece buradan degisebilir[cite: 2]
-    private int currentCombo = 1;                      //[cite: 2]
-    public int maxComboReached { get; private set; } = 1; // YENI: Sure bittiginde hedef kombo icin ulasilan "en yuksek" komboyu baz alacagiz.
+    // --- PLAYER DATA ---
+    public int currentScore { get; private set; } = 0; 
+    private int currentCombo = 1;                      
+    public int maxComboReached { get; private set; } = 1; // Tracked to show on the Win/Lose screen
 
     // To track animation statuses
-    private Coroutine scoreAnimCoroutine;  //[cite: 2]
-    private Coroutine comboAnimCoroutine;  //[cite: 2]
+    private Coroutine scoreAnimCoroutine;  
+    private Coroutine comboAnimCoroutine;  
 
     private void Awake()
     {
@@ -40,17 +40,16 @@ public class ScoreManager : MonoBehaviour
         }
         else
         {
-            Destroy(gameObject); //[cite: 2]
+            Destroy(gameObject); 
         }
     }
 
     private void Start()
     {
         ResetLevelData();
-        UpdateUI(); //[cite: 2]
     }
 
-    // Yeni level basladiginda tum statlari ve renkleri sifirlar
+    // Resets all stats and colors when a new level starts
     public void ResetLevelData()
     {
         currentScore = 0;
@@ -66,46 +65,47 @@ public class ScoreManager : MonoBehaviour
 
     public void AddScore(int totalCoinValue, int coinCount) 
     {
-        if (coinCount < 4) return; //[cite: 2]
+        if (coinCount < 4) return; 
 
-        float lengthBonus = 1f + ((coinCount - 4) * 0.2f); //[cite: 2]
+        // Algorithmic length bonus: +20% for each coin beyond 4
+        float lengthBonus = 1f + ((coinCount - 4) * 0.2f); 
         
-        int gainedScore = Mathf.RoundToInt(totalCoinValue * lengthBonus * currentCombo); //[cite: 2]
+        int gainedScore = Mathf.RoundToInt(totalCoinValue * lengthBonus * currentCombo); 
 
-        currentScore += gainedScore; //[cite: 2]
-        currentCombo++;              //[cite: 2]
+        currentScore += gainedScore; 
+        currentCombo++;              
 
-        // Rekor komboyu guncelle
+        // Update the record combo for the level end screen
         if (currentCombo > maxComboReached)
         {
             maxComboReached = currentCombo;
         }
 
-        UpdateUI(); //[cite: 2]
-        TriggerPunchAnimation(); //[cite: 2]
+        UpdateUI(); 
+        TriggerPunchAnimation(); 
     }
 
     public void ResetCombo()
     {
-        currentCombo = 1; //[cite: 2]
-        UpdateUI(); //[cite: 2]
+        currentCombo = 1; 
+        UpdateUI(); 
     }
 
     private void UpdateUI()
     {
         int targetScore = 0;
-        int targetCombo = 0;
         
         if (BoardManager.Instance != null && BoardManager.Instance.currentLevel != null)
         {
             targetScore = BoardManager.Instance.currentLevel.targetScore;
-            targetCombo = BoardManager.Instance.currentLevel.targetCombo;
         }
 
+        // 1. Update Score UI
         if (scoreText != null) 
         {
-            scoreText.text = currentScore.ToString(); //[cite: 2]
+            scoreText.text = currentScore.ToString(); 
             
+            // Turn green if the target score is reached
             if (targetScore > 0 && currentScore >= targetScore)
             {
                 ApplySolidColor(scoreText, successColor);
@@ -116,55 +116,46 @@ public class ScoreManager : MonoBehaviour
             }
         }
 
+        // 2. Update Combo UI (No longer tied to a level win condition)
         if (comboText != null) 
         {
-            // Apply the evolution naming rules based on the current combo[cite: 2]
-            string evolutionName = GetComboEvolutionName(currentCombo); //[cite: 2]
+            string evolutionName = GetComboEvolutionName(currentCombo); 
             
-            if (currentCombo < 5) //[cite: 2]
+            if (currentCombo < 5) 
             {
-                // Default text for low combos[cite: 2]
-                comboText.text = $"Combo x{currentCombo}"; //[cite: 2]
+                comboText.text = $"Combo x{currentCombo}"; 
             }
-            else //[cite: 2]
+            else 
             {
-                // Evolved text for high combos[cite: 2]
-                comboText.text = $"{evolutionName}"; //[cite: 2]
+                comboText.text = $"{evolutionName}"; 
             }
 
-            // Yapilan en yuksek kombo (maxComboReached) hedefe ulastiysa yesil yap
-            if (targetCombo > 0 && maxComboReached >= targetCombo)
-            {
-                ApplySolidColor(comboText, successColor);
-            }
-            else
-            {
-                ApplyDefaultGradient(comboText);
-            }
+            // Always use default gradient, as combo is just a visual/score multiplier now
+            ApplyDefaultGradient(comboText);
         }
 
-        // 4. Yeni Unvan Guncellemesi (Good Run, Legendary Run vb.)
+        // 3. Update Combo Title (e.g., "Good Run", "Legendary Run")
         if (comboTitleText != null)
         {
             comboTitleText.text = GetComboTitleName(currentCombo);
         }
     }
 
-    // --- COMBO EVOLUTION RULES (Materyal/Tas Evrimi) ---
+    // --- COMBO EVOLUTION RULES (Material/Stone Evolution) ---
     private string GetComboEvolutionName(int combo)
     {
-        if (combo >= 100) return "Unbreakable Core"; //[cite: 2]
-        if (combo >= 75)  return "Divine Core";      //[cite: 2]
-        if (combo >= 50)  return "Immortal Core";    //[cite: 2]
-        if (combo >= 30)  return "Legendary Core";   //[cite: 2]
-        if (combo >= 20)  return "Perfect Core";     //[cite: 2]
-        if (combo >= 10)  return "Alive Core";       //[cite: 2]
-        if (combo >= 5)   return "Combo Core";       //[cite: 2]
+        if (combo >= 100) return "Unbreakable Core"; 
+        if (combo >= 75)  return "Divine Core";      
+        if (combo >= 50)  return "Immortal Core";    
+        if (combo >= 30)  return "Legendary Core";   
+        if (combo >= 20)  return "Perfect Core";     
+        if (combo >= 10)  return "Alive Core";       
+        if (combo >= 5)   return "Combo Core";       
 
-        return "Combo"; // Fallback[cite: 2]
+        return "Combo"; // Fallback
     }
 
-    // --- YENI: COMBO TITLE RULES (Oyuncu Gidisat Unvani) ---
+    // --- COMBO TITLE RULES (Player Progression Title) ---
     private string GetComboTitleName(int combo)
     {
         if (combo >= 50) return "Immortal Run";
@@ -173,7 +164,7 @@ public class ScoreManager : MonoBehaviour
         if (combo >= 20) return "Great Run";
         if (combo >= 10) return "Good Run";
         
-        return ""; // 10'dan kucukse ekranda unvan gorunmez
+        return ""; // Do not show title if combo is less than 10
     }
 
     private void ApplyDefaultGradient(TextMeshProUGUI textComponent)
@@ -249,7 +240,7 @@ public class ScoreManager : MonoBehaviour
 
         if (textComponent == scoreText)
         {
-            if (targetScoreReached())
+            if (TargetScoreReached())
             {
                 ApplySolidColor(textComponent, successColor);
             }
@@ -260,14 +251,8 @@ public class ScoreManager : MonoBehaviour
         }
         else if (textComponent == comboText)
         {
-            if (targetComboReached())
-            {
-                ApplySolidColor(textComponent, successColor);
-            }
-            else
-            {
-                ApplyDefaultGradient(textComponent);
-            }
+            // Combo is no longer tied to level requirements, always return to default gradient
+            ApplyDefaultGradient(textComponent);
         }
         else if (textComponent == comboTitleText)
         {
@@ -275,7 +260,7 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
-    private bool targetScoreReached()
+    private bool TargetScoreReached()
     {
         int targetScore = 0;
         if (BoardManager.Instance != null && BoardManager.Instance.currentLevel != null)
@@ -284,16 +269,5 @@ public class ScoreManager : MonoBehaviour
         }
 
         return targetScore > 0 && currentScore >= targetScore;
-    }
-
-    private bool targetComboReached()
-    {
-        int targetCombo = 0;
-        if (BoardManager.Instance != null && BoardManager.Instance.currentLevel != null)
-        {
-            targetCombo = BoardManager.Instance.currentLevel.targetCombo;
-        }
-
-        return targetCombo > 0 && maxComboReached >= targetCombo;
     }
 }

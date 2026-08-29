@@ -26,21 +26,17 @@ public class InputManager : MonoBehaviour
     public float lineWidth = 0.2f;
 
     [Header("Idle / Hover Settings")]
-    public float hoverTimeThreshold = 5.0f; // Time required to trigger synchronized wiggle
+    public float hoverTimeThreshold = 5.0f; 
 
     private List<Coin> selectedJellies = new List<Coin>();
     private bool isDragging = false;
 
-    // Hover Tracking Variables
     private Coin hoveredCoin = null;
     private float hoverTimer = 0f;
 
     void Start()
     {
-        if (lineRenderer == null)
-        {
-            lineRenderer = GetComponent<LineRenderer>();
-        }
+        if (lineRenderer == null) lineRenderer = GetComponent<LineRenderer>();
 
         if (lineRenderer != null)
         {
@@ -68,31 +64,24 @@ public class InputManager : MonoBehaviour
 
         if (currentCoin != null)
         {
-            // Track if cursor stays on the same target coin
             if (currentCoin == hoveredCoin)
             {
                 hoverTimer += Time.deltaTime;
-
                 if (hoverTimer >= hoverTimeThreshold)
                 {
-                    // IF a combo selection exists, wiggle ALL selected coins together
                     if (selectedJellies.Count > 0)
                     {
                         foreach (var coin in selectedJellies)
                         {
-                            if (coin != null)
-                            {
-                                coin.StartIdleWiggle();
-                            }
+                            if (coin != null) coin.StartIdleWiggle();
                         }
                     }
-                    // ELSE wiggle only the single hovered coin
                     else
                     {
                         currentCoin.StartIdleWiggle();
                     }
 
-                    hoverTimer = 0f; // Reset timer for continuous breathing loop
+                    hoverTimer = 0f; 
                 }
             }
             else
@@ -109,7 +98,6 @@ public class InputManager : MonoBehaviour
 
     void ResetHoverTimer()
     {
-        // Stop wiggle on active selection or single hovered target
         if (selectedJellies.Count > 0)
         {
             foreach (var coin in selectedJellies)
@@ -129,11 +117,8 @@ public class InputManager : MonoBehaviour
     void HandleInput()
     {
         if (IsGameplayLocked()) return;
+        if (EventSystem.current.IsPointerOverGameObject()) return; 
 
-        if (EventSystem.current.IsPointerOverGameObject()) 
-        {
-            return; 
-        }
         if (Input.GetMouseButtonDown(0))
         {
             Coin startCoin = GetCoinUnderMouse();
@@ -188,34 +173,28 @@ public class InputManager : MonoBehaviour
             selectedJellies.Add(coin);
 
             Vector3 originalScale = coin.transform.localScale;
-
             coin.transform.DOKill();
-
             coin.transform.DOScale(originalScale * 1.25f, 0.1f).OnComplete(() => 
             {
                 coin.transform.DOScale(originalScale, 0.15f).SetEase(Ease.OutBounce);
             });
 
+            // Call the new algorithmic face update method
             UpdateSelectedCoinFaces();
 
             if (!hasGameStarted)
             {
                 hasGameStarted = true;
-                if (ComboTimerManager.Instance != null)
-                {
-                    ComboTimerManager.Instance.StartOrResetTimer();
-                }
+                if (ComboTimerManager.Instance != null) ComboTimerManager.Instance.StartOrResetTimer();
             }
             
             StartCoroutine(coin.ShakeJelly(0.08f, 0.03f));
             coin.EnableSelectionGlow();
 
-            // Pitch Scaling
             if (AudioManager.Instance != null)
             {
                 float pitchStep = 0.08f; 
                 float currentPitch = Mathf.Clamp(0.85f + (selectedJellies.Count * pitchStep), 0.85f, 2.0f);
-                
                 AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, currentPitch, 0.7f);
             }
 
@@ -224,33 +203,37 @@ public class InputManager : MonoBehaviour
                 Instantiate(dragSparklePrefab, coin.transform.position, Quaternion.identity, coin.transform);
             }
 
-            int currentCombo = selectedJellies.Count;
-
             if (ComboUIManager.Instance != null)
             {
-                ComboUIManager.Instance.UpdateComboUI(currentCombo);
+                ComboUIManager.Instance.UpdateComboUI(selectedJellies.Count);
             }
 
             UpdateFullLinePositions();
         }
     }
 
+    // --- NEW/MODIFIED SECTION: Algorithmic Face Finder ---
+    private int GetFaceLevelForCombo(int count)
+    {
+        if (count >= 20) return 5;       // Variant 6 (Element 5)
+        if (count >= 15) return 4;       // Variant 5 (Element 4)
+        if (count >= 10) return 3;       // Variant 4 (Element 3)
+        if (count >= 7)  return 2;       // Variant 3 (Element 2)
+        if (count >= 5)  return 1;       // Variant 2 (Element 1)
+        return 0;                        // Variant 1 (Element 0)
+    }
+
     private void UpdateSelectedCoinFaces()
     {
         int count = selectedJellies.Count;
-        int faceLevel = 0;
-
-
-        if (count >= 3)
-        {
-            faceLevel = count - 2; 
-        }
+        int targetFaceLevel = GetFaceLevelForCombo(count);
 
         foreach (Coin coin in selectedJellies)
         {
-            if (coin != null)
+            // Added a check to prevent modifying the face of Mystery coins
+            if (coin != null && !coin.isMysteryCoin)
             {
-                coin.UpdateFaceByCombo(faceLevel);
+                coin.UpdateFaceByCombo(targetFaceLevel);
             }
         }
     }
@@ -289,7 +272,7 @@ public class InputManager : MonoBehaviour
 
         yield return new WaitForSeconds((coinsToMerge.Count * 0.03f) + 0.18f);
 
-        int simulatedComboMultiplier = 27; // Simulated combo multiplier for testing purposes
+        int simulatedComboMultiplier = 27; 
 
         if (ComboQualityManager.Instance != null)
         {
@@ -303,7 +286,6 @@ public class InputManager : MonoBehaviour
     void SetLineColor(int colorIndex)
     {
         if (lineRenderer == null) return;
-
         Color targetColor = Color.white;
         if (colorIndex >= 0 && colorIndex < jellyColors.Length)
         {
@@ -323,24 +305,18 @@ public class InputManager : MonoBehaviour
             if (coin != null)
             {
                 coin.ResetShape();
-                
-                coin.UpdateFaceByCombo(0);
+                if (!coin.isMysteryCoin) coin.UpdateFaceByCombo(0); // Reset faces
             }
         }
 
         selectedJellies.Clear();
-
         if (lineRenderer != null) lineRenderer.positionCount = 0;
 
         if (AudioManager.Instance != null)
         {
             float randomPitch = Random.Range(0.95f, 1.05f);
             AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, randomPitch);
-
-            if (ComboUIManager.Instance != null)
-            {
-                ComboUIManager.Instance.UpdateComboUI(0); 
-            }
+            if (ComboUIManager.Instance != null) ComboUIManager.Instance.UpdateComboUI(0); 
         }
     }
 
@@ -364,10 +340,7 @@ public class InputManager : MonoBehaviour
         Collider2D[] hits = Physics2D.OverlapCircleAll(worldPos, 0.35f);
         foreach (var hit in hits)
         {
-            if (hit.CompareTag("Jelly"))
-            {
-                return hit.GetComponent<Coin>();
-            }
+            if (hit.CompareTag("Jelly")) return hit.GetComponent<Coin>();
         }
         return null;
     }
@@ -376,7 +349,6 @@ public class InputManager : MonoBehaviour
     {
         int dx = Mathf.Abs(a.x - b.x);
         int dy = Mathf.Abs(a.y - b.y);
-
         return (dx + dy == 1);
     }
 }

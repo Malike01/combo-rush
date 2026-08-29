@@ -15,6 +15,7 @@ public class Coin : MonoBehaviour
     public bool isMysteryCoin;
     
     [Header("Combo Progression Sprites")]
+    [Tooltip("Assign the face variants in order: Element 0 (Base) to Element 5 (Max Combo)")]
     public Sprite[] progressionSprites; 
     
     // Shortcut for BoardManager algorithms to access color seamlessly
@@ -45,7 +46,7 @@ public class Coin : MonoBehaviour
     {
         if (!isScaleInitialized)
         {
-            // Lock the original baseline scale only once
+            // Lock the original baseline scale only once to prevent compounding scaling issues
             if (transform.localScale != Vector3.zero)
             {
                 originalScale = transform.localScale;
@@ -57,6 +58,8 @@ public class Coin : MonoBehaviour
             isScaleInitialized = true;
         }
     }
+
+    // --- SETUP & THEME ---
 
     public void SetupCoin(Sprite sprite, int index, int points, bool isMystery = false)
     {
@@ -82,218 +85,115 @@ public class Coin : MonoBehaviour
 
     public void UpdateFaceByCombo(int comboLevel)
     {
-        // Eğer dizi atanmamışsa veya boşsa işlem yapma
+        // Do nothing if the progression array is empty or not assigned
         if (progressionSprites == null || progressionSprites.Length == 0) return;
 
+        // Clamp the index to prevent OutOfBounds exceptions
         int safeIndex = Mathf.Clamp(comboLevel, 0, progressionSprites.Length - 1);
 
         if (spriteRenderer != null)
         {
             spriteRenderer.sprite = progressionSprites[safeIndex];
             
+            // Update the background glow to match the shape of the new face
             UpdateSelectionGlowSprite();
         }
     }
 
-    public void SelectSquish()
+    // --- MYSTERY COIN DISPLAY ---
+
+    private void ShowMysteryValueDisplay(string value)
     {
-        TriggerSquishImpact();
+        EnsureMysteryValueDisplay();
+        if (mysteryValueObject != null)
+        {
+            mysteryValueObject.SetActive(true);
+        }
+
+        if (mysteryValueText != null)
+        {
+            mysteryValueText.text = value;
+
+            // Risk/Reward Visual Feedback: 
+            // If the value is negative, make it Red (Warning), otherwise Bright Yellow (Reward)
+            if (pointValue < 0)
+            {
+                mysteryValueText.color = new Color(1f, 0.3f, 0.3f, 1f); // Red Alert
+            }
+            else
+            {
+                mysteryValueText.color = new Color(1f, 0.95f, 0.35f, 1f); // Golden Yellow
+            }
+        }
     }
 
-    private void TriggerSquishImpact()
+    private void EnsureMysteryValueDisplay()
     {
-        StopIdleWiggle();
+        if (mysteryValueObject != null) return;
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
 
-        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
-        activeScaleRoutine = StartCoroutine(AnimateSquishRoutine());
+        mysteryValueObject = new GameObject("MysteryValueText");
+        mysteryValueObject.transform.SetParent(transform, false);
+        mysteryValueObject.transform.localPosition = Vector3.zero;
+        mysteryValueObject.transform.localRotation = Quaternion.identity;
+        mysteryValueObject.transform.localScale = Vector3.one;
+
+        mysteryValueText = mysteryValueObject.AddComponent<TextMeshPro>();
+        mysteryValueText.alignment = TextAlignmentOptions.Center;
+        mysteryValueText.raycastTarget = false;
+        mysteryValueText.enableAutoSizing = false;
+        mysteryValueText.fontSize = 20f;
+        mysteryValueText.fontSizeMin = 6f;
+        mysteryValueText.fontSizeMax = 12f;
+        mysteryValueText.sortingOrder = spriteRenderer != null ? spriteRenderer.sortingOrder + 5 : 100;
+        mysteryValueText.text = string.Empty;
     }
 
-    private IEnumerator AnimateSquishRoutine()
+    private void HideMysteryValueDisplay()
     {
-        float boostMultiplier = 1.05f;
-        // Always calculate target scale relative to the static originalScale baseline
-        Vector3 targetScale = new Vector3(originalScale.x * boostMultiplier, originalScale.y * (boostMultiplier - 0.05f), originalScale.z);
-        float duration = 0.08f;
+        if (mysteryValueObject != null)
+        {
+            mysteryValueObject.SetActive(false);
+        }
+    }
+
+    private void SetMysteryValueAlpha(float alpha)
+    {
+        if (mysteryValueText == null) return;
+
+        Color color = mysteryValueText.color;
+        color.a = alpha;
+        mysteryValueText.color = color;
+    }
+
+    private IEnumerator FadeMysteryValueRoutine(float targetAlpha, float duration)
+    {
+        if (mysteryValueText == null) yield break;
+
+        float startAlpha = mysteryValueText.color.a;
         float elapsed = 0f;
-        Vector3 startScale = transform.localScale;
 
         while (elapsed < duration)
         {
             if (this == null || gameObject == null) yield break;
 
             float t = elapsed / duration;
-            transform.localScale = Vector3.Lerp(startScale, targetScale, t);
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-        
-        if (this != null && gameObject != null)
-        {
-            transform.localScale = targetScale;
-        }
-        activeScaleRoutine = null;
-    }
-
-    public void ResetShape()
-    {
-        StopIdleWiggle();
-        DisableSelectionGlow();
-
-        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
-
-        activeScaleRoutine = StartCoroutine(AnimateReturnToOriginal(0.1f));
-    }
-
-    // Force Reset to Original Scale safely
-    public void ResetScale()
-    {
-        StopIdleWiggle();
-        DisableSelectionGlow();
-        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
-        
-        transform.localScale = originalScale;
-    }
-
-    private IEnumerator AnimateReturnToOriginal(float duration)
-    {
-        Vector3 startScale = transform.localScale;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            if (this == null || gameObject == null) yield break;
-
-            float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
-            transform.localScale = Vector3.Lerp(startScale, originalScale, t);
+            Color color = mysteryValueText.color;
+            color.a = Mathf.Lerp(startAlpha, targetAlpha, t);
+            mysteryValueText.color = color;
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        if (this != null && gameObject != null)
+        if (mysteryValueText != null)
         {
-            transform.localScale = originalScale;
-        }
-        activeScaleRoutine = null;
-    }
-
-    // --- MOUSE HOVER EFFECTS ---
-    private void OnMouseEnter()
-    {
-        if (BoardManager.Instance != null && BoardManager.Instance.IsProcessing) return;
-
-        // Scale up slightly relative to originalScale
-        SetScaleAnimated(originalScale * 1.12f, 0.1f);
-    }
-
-    private void OnMouseExit()
-    {
-        if (BoardManager.Instance != null && BoardManager.Instance.IsProcessing) return;
-
-        // Return strictly back to originalScale
-        SetScaleAnimated(originalScale, 0.1f);
-    }
-
-    public void SetScaleAnimated(Vector3 targetScale, float duration = 0.1f)
-    {
-        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
-        activeScaleRoutine = StartCoroutine(ScaleToRoutine(targetScale, duration));
-    }
-
-    private IEnumerator ScaleToRoutine(Vector3 targetScale, float duration)
-    {
-        Vector3 startScale = transform.localScale;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            if (this == null || gameObject == null) yield break;
-
-            transform.localScale = Vector3.Lerp(startScale, targetScale, elapsed / duration);
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        if (this != null && gameObject != null)
-        {
-            transform.localScale = targetScale;
-        }
-        activeScaleRoutine = null;
-    }
-
-    // --- IDLE WIGGLE ---
-    public void StartIdleWiggle()
-    {
-        if (wiggleCoroutine == null && activeScaleRoutine == null)
-        {
-            wiggleCoroutine = StartCoroutine(WiggleRoutine());
+            Color finalColor = mysteryValueText.color;
+            finalColor.a = targetAlpha;
+            mysteryValueText.color = finalColor;
         }
     }
 
-    public void StopIdleWiggle()
-    {
-        if (wiggleCoroutine != null)
-        {
-            StopCoroutine(wiggleCoroutine);
-            wiggleCoroutine = null;
-        }
-        transform.localScale = originalScale; 
-    }
-
-    private IEnumerator WiggleRoutine()
-    {
-        float elapsed = 0f;
-        float duration = 1.0f;
-
-        // Lock baseline scale locally to prevent compounding scaling issues
-        Vector3 baseScale = originalScale;
-
-        while (elapsed < duration)
-        {
-            if (this == null || gameObject == null) yield break;
-
-            float progress = elapsed / duration;
-            float pulse = Mathf.Sin(progress * Mathf.PI * 2f);
-            
-            // Subtle breathing/pulse effect (3%)
-            float scaleX = baseScale.x + (pulse * 0.03f);
-            float scaleY = baseScale.y + (pulse * 0.03f);
-
-            transform.localScale = new Vector3(scaleX, scaleY, baseScale.z);
-
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        if (this != null && gameObject != null)
-        {
-            transform.localScale = baseScale;
-        }
-        wiggleCoroutine = null;
-    }
-
-    public IEnumerator ShakeJelly(float duration = 0.12f, float magnitude = 0.04f)
-    {
-        Vector3 basePos = transform.position;
-        float elapsed = 0.0f;
-
-        while (elapsed < duration)
-        {
-            // Abort coroutine instantly if destroyed mid-air
-            if (this == null || gameObject == null) yield break;
-
-            float offsetX = Random.Range(-magnitude, magnitude);
-            float offsetY = Random.Range(-magnitude, magnitude);
-            transform.position = basePos + new Vector3(offsetX, offsetY, 0f);
-
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        if (this != null && gameObject != null)
-        {
-            transform.position = basePos;
-        }
-    }
+    // --- SELECTION GLOW (BEHIND THE COIN) ---
 
     public void EnableSelectionGlow()
     {
@@ -347,93 +247,200 @@ public class Coin : MonoBehaviour
         }
     }
 
-    private void EnsureMysteryValueDisplay()
+    // --- ANIMATIONS: SQUASH, WIGGLE, SHAKE ---
+
+    public void SelectSquish()
     {
-        if (mysteryValueObject != null) return;
-
-        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
-
-        mysteryValueObject = new GameObject("MysteryValueText");
-        mysteryValueObject.transform.SetParent(transform, false);
-        mysteryValueObject.transform.localPosition = Vector3.zero;
-        mysteryValueObject.transform.localRotation = Quaternion.identity;
-        mysteryValueObject.transform.localScale = Vector3.one;
-
-        mysteryValueText = mysteryValueObject.AddComponent<TextMeshPro>();
-        mysteryValueText.alignment = TextAlignmentOptions.Center;
-        mysteryValueText.raycastTarget = false;
-        mysteryValueText.enableAutoSizing = false;
-        mysteryValueText.fontSize = 20f;
-        mysteryValueText.fontSizeMin = 6f;
-        mysteryValueText.fontSizeMax = 12f;
-        mysteryValueText.color = Color.white;
-        mysteryValueText.colorGradient = new VertexGradient(
-            new Color(1f, 0.95f, 0.35f, 1f),
-            new Color(1f, 0.95f, 0.35f, 1f),
-            new Color(1f, 0.95f, 0.35f, 1f),
-            new Color(1f, 0.95f, 0.35f, 1f));
-        mysteryValueText.sortingOrder = spriteRenderer != null ? spriteRenderer.sortingOrder + 5 : 100;
-        mysteryValueText.text = string.Empty;
+        TriggerSquishImpact();
     }
 
-    private void ShowMysteryValueDisplay(string value)
+    private void TriggerSquishImpact()
     {
-        EnsureMysteryValueDisplay();
-        if (mysteryValueObject != null)
-        {
-            mysteryValueObject.SetActive(true);
-        }
+        StopIdleWiggle();
 
-        if (mysteryValueText != null)
-        {
-            mysteryValueText.text = value;
-            mysteryValueText.color = new Color(1f, 0.95f, 0.35f, 1f);
-        }
+        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
+        activeScaleRoutine = StartCoroutine(AnimateSquishRoutine());
     }
 
-    private void HideMysteryValueDisplay()
+    private IEnumerator AnimateSquishRoutine()
     {
-        if (mysteryValueObject != null)
-        {
-            mysteryValueObject.SetActive(false);
-        }
-    }
-
-    private void SetMysteryValueAlpha(float alpha)
-    {
-        if (mysteryValueText == null) return;
-
-        Color color = mysteryValueText.color;
-        color.a = alpha;
-        mysteryValueText.color = color;
-    }
-
-    private IEnumerator FadeMysteryValueRoutine(float targetAlpha, float duration)
-    {
-        if (mysteryValueText == null) yield break;
-
-        float startAlpha = mysteryValueText.color.a;
+        float boostMultiplier = 1.05f;
+        Vector3 targetScale = new Vector3(originalScale.x * boostMultiplier, originalScale.y * (boostMultiplier - 0.05f), originalScale.z);
+        float duration = 0.08f;
         float elapsed = 0f;
+        Vector3 startScale = transform.localScale;
 
         while (elapsed < duration)
         {
             if (this == null || gameObject == null) yield break;
 
             float t = elapsed / duration;
-            Color color = mysteryValueText.color;
-            color.a = Mathf.Lerp(startAlpha, targetAlpha, t);
-            mysteryValueText.color = color;
+            transform.localScale = Vector3.Lerp(startScale, targetScale, t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        
+        if (this != null && gameObject != null)
+        {
+            transform.localScale = targetScale;
+        }
+        activeScaleRoutine = null;
+    }
+
+    public void ResetShape()
+    {
+        StopIdleWiggle();
+        DisableSelectionGlow();
+
+        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
+
+        activeScaleRoutine = StartCoroutine(AnimateReturnToOriginal(0.1f));
+    }
+
+    public void ResetScale()
+    {
+        StopIdleWiggle();
+        DisableSelectionGlow();
+        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
+        
+        transform.localScale = originalScale;
+    }
+
+    private IEnumerator AnimateReturnToOriginal(float duration)
+    {
+        Vector3 startScale = transform.localScale;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            if (this == null || gameObject == null) yield break;
+
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+            transform.localScale = Vector3.Lerp(startScale, originalScale, t);
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        if (mysteryValueText != null)
+        if (this != null && gameObject != null)
         {
-            Color finalColor = mysteryValueText.color;
-            finalColor.a = targetAlpha;
-            mysteryValueText.color = finalColor;
+            transform.localScale = originalScale;
+        }
+        activeScaleRoutine = null;
+    }
+
+    // --- MOUSE HOVER EFFECTS ---
+    private void OnMouseEnter()
+    {
+        if (BoardManager.Instance != null && BoardManager.Instance.IsProcessing) return;
+        SetScaleAnimated(originalScale * 1.12f, 0.1f);
+    }
+
+    private void OnMouseExit()
+    {
+        if (BoardManager.Instance != null && BoardManager.Instance.IsProcessing) return;
+        SetScaleAnimated(originalScale, 0.1f);
+    }
+
+    public void SetScaleAnimated(Vector3 targetScale, float duration = 0.1f)
+    {
+        if (activeScaleRoutine != null) StopCoroutine(activeScaleRoutine);
+        activeScaleRoutine = StartCoroutine(ScaleToRoutine(targetScale, duration));
+    }
+
+    private IEnumerator ScaleToRoutine(Vector3 targetScale, float duration)
+    {
+        Vector3 startScale = transform.localScale;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            if (this == null || gameObject == null) yield break;
+
+            transform.localScale = Vector3.Lerp(startScale, targetScale, elapsed / duration);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (this != null && gameObject != null)
+        {
+            transform.localScale = targetScale;
+        }
+        activeScaleRoutine = null;
+    }
+
+    public void StartIdleWiggle()
+    {
+        if (wiggleCoroutine == null && activeScaleRoutine == null)
+        {
+            wiggleCoroutine = StartCoroutine(WiggleRoutine());
         }
     }
+
+    public void StopIdleWiggle()
+    {
+        if (wiggleCoroutine != null)
+        {
+            StopCoroutine(wiggleCoroutine);
+            wiggleCoroutine = null;
+        }
+        transform.localScale = originalScale; 
+    }
+
+    private IEnumerator WiggleRoutine()
+    {
+        float elapsed = 0f;
+        float duration = 1.0f;
+
+        Vector3 baseScale = originalScale;
+
+        while (elapsed < duration)
+        {
+            if (this == null || gameObject == null) yield break;
+
+            float progress = elapsed / duration;
+            float pulse = Mathf.Sin(progress * Mathf.PI * 2f);
+            
+            // Subtle breathing/pulse effect (3%)
+            float scaleX = baseScale.x + (pulse * 0.03f);
+            float scaleY = baseScale.y + (pulse * 0.03f);
+
+            transform.localScale = new Vector3(scaleX, scaleY, baseScale.z);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (this != null && gameObject != null)
+        {
+            transform.localScale = baseScale;
+        }
+        wiggleCoroutine = null;
+    }
+
+    public IEnumerator ShakeJelly(float duration = 0.12f, float magnitude = 0.04f)
+    {
+        Vector3 basePos = transform.position;
+        float elapsed = 0.0f;
+
+        while (elapsed < duration)
+        {
+            if (this == null || gameObject == null) yield break;
+
+            float offsetX = Random.Range(-magnitude, magnitude);
+            float offsetY = Random.Range(-magnitude, magnitude);
+            transform.position = basePos + new Vector3(offsetX, offsetY, 0f);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (this != null && gameObject != null)
+        {
+            transform.position = basePos;
+        }
+    }
+
+    // --- GAMEPLAY MERGE/DROP ANIMATIONS ---
 
     public IEnumerator RevealMysteryCoinRoutine(Vector3 targetPosition, float delay = 0f)
     {
@@ -512,7 +519,7 @@ public class Coin : MonoBehaviour
             if (this == null || gameObject == null) yield break;
 
             float t = elapsed / duration;
-            t = t * t;
+            t = t * t; // Ease in
 
             transform.position = Vector3.Lerp(startPos, centerTarget, t);
             transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t);
@@ -536,6 +543,7 @@ public class Coin : MonoBehaviour
 
         transform.localScale = originalScale;
 
+        // Use DOTween for a juicy drop and squash effect
         transform.DOMove(targetPosition, duration)
             .SetEase(Ease.InQuad)
             .OnComplete(() => 
