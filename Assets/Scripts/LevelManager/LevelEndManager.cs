@@ -1,5 +1,8 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro; 
+using DG.Tweening; 
 
 public class LevelEndManager : MonoBehaviour
 {
@@ -9,6 +12,12 @@ public class LevelEndManager : MonoBehaviour
     public GameObject levelEndPanel; 
     public GameObject winContentGroup; 
     public GameObject loseContentGroup;
+
+    [Header("Delay & Visual Effects")]
+    public GameObject gameOverTexture;   
+    [Tooltip("Target scale size for the Game Over texture popup (e.g., 0.6 or 0.8)")]
+    public float gameOverTextureScale = 0.5f; // NEW: Easy slider for texture size
+    public GameObject[] otherUIElements; 
 
     [Header("Win UI")]
     public TextMeshProUGUI winTitleText;          
@@ -35,6 +44,7 @@ public class LevelEndManager : MonoBehaviour
     private void Start()
     {
         IsLevelEnded = false;
+        
         if (levelEndPanel != null) levelEndPanel.SetActive(false);
     }
 
@@ -42,29 +52,102 @@ public class LevelEndManager : MonoBehaviour
     {
         if (IsLevelEnded) return;
 
+        Debug.Log("Game Over! Level End Panel sequence started.");
         IsLevelEnded = true;
-        transform.SetAsLastSibling(); 
-        
+
+        // Wake up the GameObject to allow Coroutines
+        this.gameObject.SetActive(true);
         if (levelEndPanel != null) levelEndPanel.SetActive(true);
 
+        transform.SetAsLastSibling(); 
+        
+        StartCoroutine(ShowLevelEndSequence());
+    }
+
+    private IEnumerator ShowLevelEndSequence()
+    {
+        // 1. Ensure any ongoing animations on the game over texture are killed
+        if (gameOverTexture != null) gameOverTexture.transform.DOKill();
+
+        // 2. Hide the purple background image temporarily
+        Image panelBgImage = null;
+        if (levelEndPanel != null)
+        {
+            panelBgImage = levelEndPanel.GetComponent<Image>();
+            if (panelBgImage != null) panelBgImage.enabled = false;
+        }
+
+        // 3. Hide inner contents
+        if (winContentGroup != null) winContentGroup.SetActive(false);
+        if (loseContentGroup != null) loseContentGroup.SetActive(false);
+        
+        foreach (GameObject uiElement in otherUIElements)
+        {
+            if (uiElement != null && uiElement != levelEndPanel) 
+            {
+                uiElement.SetActive(false);
+            }
+        }
+
+        // 4. ANIMATION: Show Game Over Texture with an adjustable bouncy scale
+        if (gameOverTexture != null) 
+        {
+            gameOverTexture.transform.localScale = Vector3.zero; // Start from size 0
+            gameOverTexture.SetActive(true);
+            
+            // Pop out to the adjustable target scale over 0.6 seconds
+            Vector3 targetScale = Vector3.one * gameOverTextureScale;
+            gameOverTexture.transform.DOScale(targetScale, 0.6f).SetEase(Ease.OutBounce);
+        }
+
+        // 5. Wait for the delay (3 seconds)
+        yield return new WaitForSeconds(3f);
+
+        // 6. ANIMATION: Hide Game Over Texture shrinking it back down
+        if (gameOverTexture != null) 
+        {
+            // Shrink with a snappy pull-back effect over 0.3 seconds
+            gameOverTexture.transform.DOScale(Vector3.zero, 0.3f).SetEase(Ease.InBack);
+            
+            // Wait for the shrinking animation to finish before proceeding
+            yield return new WaitForSeconds(0.3f); 
+            gameOverTexture.SetActive(false);
+        }
+
+        // 7. Bring back the purple background image
+        if (panelBgImage != null) panelBgImage.enabled = true;
+
+        // 8. Restore buttons and common UI
+        foreach (GameObject uiElement in otherUIElements)
+        {
+            if (uiElement != null && uiElement != levelEndPanel) 
+            {
+                uiElement.SetActive(true);
+            }
+        }
+
+        // 9. Evaluate and show Win/Lose content
         EvaluateLevelResults();
     }
 
     private void EvaluateLevelResults()
     {
+        if (LevelManager.Instance == null) return;
+        if (LevelManager.Instance.allLevels.Count == 0 || LevelManager.Instance.currentLevelIndex >= LevelManager.Instance.allLevels.Count) return;
+        if (ScoreManager.Instance == null) return;
+
         LevelData activeLevel = LevelManager.Instance.allLevels[LevelManager.Instance.currentLevelIndex];
-
-        if (activeLevel == null || ScoreManager.Instance == null) return;
-
+        
         int currentScore = ScoreManager.Instance.currentScore;
         int maxCombo = ScoreManager.Instance.maxComboReached;
 
         int targetScore = activeLevel.targetScore;
         bool isTaskCompleted = LevelManager.Instance.isExtraTaskCompleted;
 
+        // WIN CONDITION: Target score reached AND extra task completed
         if (currentScore >= targetScore && isTaskCompleted)
         {
-            LevelManager.Instance.LevelCompletedSuccess(); 
+            LevelManager.Instance.LevelCompletedSuccess(); // Unlocks next level
             SetupWinScreen(currentScore, maxCombo, activeLevel);
         }
         else
@@ -133,7 +216,7 @@ public class LevelEndManager : MonoBehaviour
         IsLevelEnded = false;
         if (levelEndPanel != null) levelEndPanel.SetActive(false); 
 
-        bool won = winContentGroup.activeSelf;
+        bool won = winContentGroup != null && winContentGroup.activeSelf;
         if (won)
         {
             int nextIdx = LevelManager.Instance.currentLevelIndex + 1;
