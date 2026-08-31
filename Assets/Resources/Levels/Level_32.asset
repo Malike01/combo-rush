@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0893d8bd503c4644cacd68c0f320c520, type: 3}
+  m_Name: Level_32
+  m_EditorClassIdentifier: Assembly-CSharp::LevelData
+  levelNumber: 32
+  targetScore: 58000
+  taskDescription: En az 3 adet Overjoyed(15x-19x) coin patlat
+  taskType: 3
+  taskTargetValue: 3
+  taskSecondaryValue: 3
+  gridWidth: 6
+  gridHeight: 8
+  gridLayout: '111111
+
+    111011
+
+    110001
+
+    100000
+
+    100000
+
+    110001
+
+    111011
+
+    111111'

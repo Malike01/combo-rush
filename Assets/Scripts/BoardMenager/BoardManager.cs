@@ -95,6 +95,11 @@ public partial class BoardManager : MonoBehaviour
         width = level.gridWidth;
         height = level.gridHeight;
 
+        if (LevelManager.Instance != null)
+        {
+            currentPlayerLevel = LevelManager.Instance.currentLevelIndex + 1;
+        }
+
         ParseGridLayout();
         GenerateBoard();
     }

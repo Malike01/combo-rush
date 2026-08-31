@@ -20,18 +20,18 @@ MonoBehaviour:
   taskSecondaryValue: 0
   gridWidth: 6
   gridHeight: 8
-  gridLayout: '111111
+  gridLayout: '111100
+
+    111110
 
     111111
 
     111111
 
-    110011
-
     111111
 
     111111
 
-    111111
+    011111
 
-    111111'
+    001111'

@@ -7,7 +7,8 @@ public enum ExtraTaskType
     IncludeMysteryCoin,     // Exp:  Include Mystery Coin in Combo
     MatchSpecificVariant,   // Exp:  Match Specific Variant
     SpecificColorCombo,     // Exp:  Match Specific Color Combo
-    ComboAndVariant        // Exp:  Make x5 Combo with Specific Variant
+    ComboAndVariant,        // Exp:  Make x5 Combo with Specific Variant
+    MysteryAndClock         // Exp:  Include Mystery Coin and Clock in Combo
 }
 
 [CreateAssetMenu(fileName = "Level_", menuName = "JellyMatch/Level Data")]

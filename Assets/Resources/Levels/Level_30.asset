@@ -12,26 +12,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0893d8bd503c4644cacd68c0f320c520, type: 3}
   m_Name: Level_30
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
-  levelNumber: 21
-  targetScore: 25000
-  taskDescription: 
-  taskType: 0
-  taskTargetValue: 0
-  taskSecondaryValue: 0
+  levelNumber: 30
+  targetScore: 50000
+  taskDescription: En az 1 kez x20 Kombo yap ve 1 adet Gizemli Coin patlat
+  taskType: 5
+  taskTargetValue: 20
+  taskSecondaryValue: 1
   gridWidth: 6
   gridHeight: 8
-  gridLayout: '111111
+  gridLayout: '001100
+
+    011110
 
     111111
 
     111111
 
-    110011
-
     111111
 
     111111
 
     111111
 
-    111111'
+    011110'

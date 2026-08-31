@@ -87,6 +87,9 @@ public class LevelManager : MonoBehaviour
         isComboSubTaskDone = false;
         currentVariantCount = 0;
 
+        mysteryCoinsPoppedCount = 0;
+        clockRotationCount = 0;
+
         UpdateLevelDisplay(levelToLoad);
 
         if (BoardManager.Instance != null)
@@ -209,9 +212,28 @@ public class LevelManager : MonoBehaviour
                 if (maxVariantMatched >= 1) currentVariantCount++;
                 if (isComboSubTaskDone && currentVariantCount >= currentLevel.taskSecondaryValue) isExtraTaskCompleted = true;
                 break;
+
+            case ExtraTaskType.MysteryAndClock:
+                if (hasMysteryCoin)
+                {
+                    mysteryCoinsPoppedCount++;
+                }
+
+                if (mysteryCoinsPoppedCount >= currentLevel.taskTargetValue && 
+                    clockRotationCount >= currentLevel.taskSecondaryValue)
+                {
+                    isExtraTaskCompleted = true;
+                }
+                break;
         }
 
         if (isExtraTaskCompleted && extraTaskText != null) extraTaskText.color = Color.green;
+    }
+
+    public void RegisterClockRotation()
+    {
+        clockRotationCount++;
+        ProcessExtraTask(0, -1, false, 0);
     }
 
     public void LevelCompletedSuccess()
