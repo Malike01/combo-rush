@@ -82,8 +82,15 @@ public partial class BoardManager : MonoBehaviour
         ResetHintTimer();
     }
 
+    public void ResetProcessingState()
+    {
+        StopAllCoroutines();
+        IsProcessing = false;
+    }
+
     public void LoadLevel(LevelData level)
     {
+        ResetProcessingState();
         currentLevel = level;
         width = level.gridWidth;
         height = level.gridHeight;
@@ -94,6 +101,7 @@ public partial class BoardManager : MonoBehaviour
 
     public void GenerateBoard()
     {
+        IsProcessing = false;
         if (currentLevel != null)
         {
             width = currentLevel.gridWidth;
@@ -143,6 +151,16 @@ public partial class BoardManager : MonoBehaviour
                 // Generate the actual coin (Jelly)
                 SpawnJellyAt(x, y, new Vector3(pos.x, pos.y, -1f));
             }
+        }
+
+        if (!HasAnyValidMatch())
+        {
+            StartCoroutine(ShuffleBoardRoutine());
+        }
+
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.ResetInputState();
         }
     }
 

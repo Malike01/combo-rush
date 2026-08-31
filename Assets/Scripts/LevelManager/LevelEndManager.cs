@@ -249,6 +249,8 @@ public class LevelEndManager : MonoBehaviour
         if (winContentGroup != null) winContentGroup.SetActive(false);
         if (loseContentGroup != null) loseContentGroup.SetActive(false);
 
+        if (BoardManager.Instance != null) BoardManager.Instance.ResetProcessingState();
+        if (LevelManager.Instance != null) LevelManager.Instance.ResetIntroState();
         if (ScoreManager.Instance != null) ScoreManager.Instance.ResetLevelData();
         if (ComboTimerManager.Instance != null) ComboTimerManager.Instance.ResetTimerFull();
 

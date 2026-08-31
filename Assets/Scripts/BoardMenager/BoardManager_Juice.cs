@@ -181,11 +181,15 @@ public partial class BoardManager : MonoBehaviour
         uiTransform.localScale = originalScale;
     }
 
-    public void CheckForPossibleMoves()
+    public bool HasAnyValidMatch()
     {
         List<Coin> bestGroup = FindLargestConnectedGroup();
+        return bestGroup != null && bestGroup.Count >= 4;
+    }
 
-        if (bestGroup == null || bestGroup.Count < 4)
+    public void CheckForPossibleMoves()
+    {
+        if (!HasAnyValidMatch())
         {
             Debug.Log("Oynanabilir hamle kalmadı! Grid karıştırılıyor...");
             StartCoroutine(ShuffleBoardRoutine());

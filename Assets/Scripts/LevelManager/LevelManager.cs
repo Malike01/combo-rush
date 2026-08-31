@@ -62,10 +62,21 @@ public class LevelManager : MonoBehaviour
         }
     }
 
+    public void ResetIntroState()
+    {
+        IsIntroPlaying = false;
+        if (levelIntroPanel != null)
+        {
+            levelIntroPanel.transform.DOKill();
+            levelIntroPanel.SetActive(false);
+        }
+    }
+
     public void StartLevel(int index)
     {
         if (index >= allLevels.Count) return;
 
+        IsIntroPlaying = false;
         currentLevelIndex = index;
         PlayerPrefs.SetInt("LastPlayedLevel", currentLevelIndex);
         
@@ -98,6 +109,7 @@ public class LevelManager : MonoBehaviour
         if (levelIntroPanel == null) 
         {
             Debug.LogWarning("LevelManager: 'Level Intro Panel' is not assigned in the Inspector! Cannot show intro.");
+            IsIntroPlaying = false;
             return;
         }
 
@@ -119,11 +131,10 @@ public class LevelManager : MonoBehaviour
         levelIntroPanel.transform.DOKill(); 
         levelIntroPanel.transform.localScale = Vector3.zero;
 
-        // 4. Play the pop-up sequence
-        levelIntroPanel.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack).OnComplete(() => 
+        // 4. Play the pop-up sequence with snappy timing
+        levelIntroPanel.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack).OnComplete(() => 
         {
-            // Wait for 2.5 seconds, then shrink and hide the panel
-            levelIntroPanel.transform.DOScale(Vector3.zero, 0.4f).SetEase(Ease.InBack).SetDelay(5f).OnComplete(() => 
+            levelIntroPanel.transform.DOScale(Vector3.zero, 0.3f).SetEase(Ease.InBack).SetDelay(1.8f).OnComplete(() => 
             {
                 levelIntroPanel.SetActive(false);
                 
@@ -131,6 +142,14 @@ public class LevelManager : MonoBehaviour
                 IsIntroPlaying = false; 
             });
         });
+
+        StartCoroutine(SafetyUnlockIntroRoutine(3.0f));
+    }
+
+    private System.Collections.IEnumerator SafetyUnlockIntroRoutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        IsIntroPlaying = false;
     }
 
     public void SetCurrentLevel(LevelData level)

@@ -80,7 +80,7 @@ public class ComboTimerManager : MonoBehaviour
 
         IsLevelFinished = false;
         currentTime = maxTime;
-        isTimerRunning = true; 
+        isTimerRunning = false; 
 
         if (timerFillImage != null)
         {
@@ -197,6 +197,11 @@ public class ComboTimerManager : MonoBehaviour
         IsLevelFinished = true;
         isTimerRunning = false;
         currentTime = 0;
+
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.ResetInputState();
+        }
         
         if (timerFillImage != null)
         {
@@ -204,16 +209,16 @@ public class ComboTimerManager : MonoBehaviour
         }
 
         StopTimer();
-        
+         
         if (timerUIRoot != null)
         {
             timerUIRoot.localScale = Vector3.one;
         }
 
-       if (LevelEndManager.Instance != null)
-       {
-          LevelEndManager.Instance.ShowLevelEndScreen();
-       }
+        if (LevelEndManager.Instance != null)
+        {
+           LevelEndManager.Instance.ShowLevelEndScreen();
+        }
 
         Debug.Log("TIME OVER! GAME OVER.");
     }

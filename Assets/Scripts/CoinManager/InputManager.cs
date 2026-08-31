@@ -6,6 +6,8 @@ using DG.Tweening;
 
 public class InputManager : MonoBehaviour
 {
+    public static InputManager Instance;
+
     [Header("References")]
     public BoardManager boardManager;
     public LineRenderer lineRenderer;
@@ -34,9 +36,18 @@ public class InputManager : MonoBehaviour
     private Coin hoveredCoin = null;
     private float hoverTimer = 0f;
 
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+    }
+
     void Start()
     {
-        if (lineRenderer == null) lineRenderer = GetComponent<LineRenderer>();
+        if (lineRenderer == null) {
+            lineRenderer = GetComponent<LineRenderer>();
 
         if (lineRenderer != null)
         {
@@ -49,7 +60,14 @@ public class InputManager : MonoBehaviour
 
     void Update()
     {
-        if (IsGameplayLocked()) return;
+        if (IsGameplayLocked())
+        {
+            if (isDragging || (lineRenderer != null && lineRenderer.positionCount > 0) || selectedJellies.Count > 0)
+            {
+                ForceClearSelection();
+            }
+            return;
+        }
 
         HandleInput();
         HandleHoverDetection();
@@ -299,9 +317,10 @@ public class InputManager : MonoBehaviour
         lineRenderer.endColor = targetColor;
     }
 
-    void ClearSelection()
+    public void ForceClearSelection()
     {
-        if (IsGameplayLocked()) return;
+        isDragging = false;
+        ResetHoverTimer();
 
         foreach (var coin in selectedJellies)
         {
@@ -314,38 +333,52 @@ public class InputManager : MonoBehaviour
 
         selectedJellies.Clear();
         if (lineRenderer != null) lineRenderer.positionCount = 0;
+        if (ComboUIManager.Instance != null) ComboUIManager.Instance.UpdateComboUI(0);
+    }
+
+    void ClearSelection()
+    {
+        ForceClearSelection();
 
         if (AudioManager.Instance != null)
         {
             float randomPitch = Random.Range(0.95f, 1.05f);
             AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, randomPitch);
-            if (ComboUIManager.Instance != null) ComboUIManager.Instance.UpdateComboUI(0); 
         }
     }
 
     // Call this whenever a level starts or resets
     public void ResetInputState()
     {
-        isDragging = false;
         hasGameStarted = false;
-        selectedJellies.Clear();
-        if (lineRenderer != null) lineRenderer.positionCount = 0;
+        hoverTimer = 0f;
+        hoveredCoin = null;
+        ForceClearSelection();
     }
 
     private bool IsGameplayLocked()
     {
+        if (BoardManager.Instance != null && BoardManager.Instance.IsProcessing)
+        {
+            Debug.Log("is Processing is locked");
+            return true;
+        }
+
         if (LevelManager.Instance != null && LevelManager.Instance.IsIntroPlaying)
         {
+            Debug.Log("is IntroPlaying is locked");
             return true;
         }
 
         if (LevelEndManager.Instance != null && LevelEndManager.Instance.IsLevelEnded)
         {
+            Debug.Log("is LevelEnded is locked");
             return true;
         }
 
         if (ComboTimerManager.Instance != null && ComboTimerManager.Instance.IsLevelFinished)
         {
+            Debug.Log("is ComboTimerManager is locked");
             return true;
         }
 
