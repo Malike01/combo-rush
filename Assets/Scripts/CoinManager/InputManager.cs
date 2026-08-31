@@ -117,10 +117,12 @@ public class InputManager : MonoBehaviour
     void HandleInput()
     {
         if (IsGameplayLocked()) return;
-        if (EventSystem.current.IsPointerOverGameObject()) return; 
 
         if (Input.GetMouseButtonDown(0))
         {
+            // Ignore UI clicks ONLY when first pressing down, unless dragging
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return; 
+
             Coin startCoin = GetCoinUnderMouse();
             if (startCoin != null)
             {
@@ -179,7 +181,6 @@ public class InputManager : MonoBehaviour
                 coin.transform.DOScale(originalScale, 0.15f).SetEase(Ease.OutBounce);
             });
 
-            // Call the new algorithmic face update method
             UpdateSelectedCoinFaces();
 
             if (!hasGameStarted)
@@ -212,15 +213,14 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    // --- NEW/MODIFIED SECTION: Algorithmic Face Finder ---
     private int GetFaceLevelForCombo(int count)
     {
-        if (count >= 20) return 5;       // Variant 6 (Element 5)
-        if (count >= 15) return 4;       // Variant 5 (Element 4)
-        if (count >= 10) return 3;       // Variant 4 (Element 3)
-        if (count >= 7)  return 2;       // Variant 3 (Element 2)
-        if (count >= 5)  return 1;       // Variant 2 (Element 1)
-        return 0;                        // Variant 1 (Element 0)
+        if (count >= 20) return 5;       
+        if (count >= 15) return 4;       
+        if (count >= 10) return 3;       
+        if (count >= 7)  return 2;       
+        if (count >= 5)  return 1;       
+        return 0;                        
     }
 
     private void UpdateSelectedCoinFaces()
@@ -230,7 +230,6 @@ public class InputManager : MonoBehaviour
 
         foreach (Coin coin in selectedJellies)
         {
-            // Added a check to prevent modifying the face of Mystery coins
             if (coin != null && !coin.isMysteryCoin)
             {
                 coin.UpdateFaceByCombo(targetFaceLevel);
@@ -279,7 +278,11 @@ public class InputManager : MonoBehaviour
             ComboQualityManager.Instance.ProcessComboQuality(coinCount, simulatedComboMultiplier, mergeCenter);
         }
 
-        boardManager.ProcessMatches(coinsToMerge);
+        if (boardManager != null)
+        {
+            boardManager.ProcessMatches(coinsToMerge);
+        }
+        
         selectedJellies.Clear();
     }
 
@@ -305,7 +308,7 @@ public class InputManager : MonoBehaviour
             if (coin != null)
             {
                 coin.ResetShape();
-                if (!coin.isMysteryCoin) coin.UpdateFaceByCombo(0); // Reset faces
+                if (!coin.isMysteryCoin) coin.UpdateFaceByCombo(0); 
             }
         }
 
@@ -320,11 +323,32 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    // Call this whenever a level starts or resets
+    public void ResetInputState()
+    {
+        isDragging = false;
+        hasGameStarted = false;
+        selectedJellies.Clear();
+        if (lineRenderer != null) lineRenderer.positionCount = 0;
+    }
+
     private bool IsGameplayLocked()
     {
-        if (boardManager != null && boardManager.IsProcessing) return true;
-        if (ComboTimerManager.Instance != null && ComboTimerManager.Instance.IsLevelFinished) return true;
-        if (LevelEndManager.Instance != null && LevelEndManager.Instance.IsLevelEnded) return true;
+        if (LevelManager.Instance != null && LevelManager.Instance.IsIntroPlaying)
+        {
+            return true;
+        }
+
+        if (LevelEndManager.Instance != null && LevelEndManager.Instance.IsLevelEnded)
+        {
+            return true;
+        }
+
+        if (ComboTimerManager.Instance != null && ComboTimerManager.Instance.IsLevelFinished)
+        {
+            return true;
+        }
+
         return false;
     }
 

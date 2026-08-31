@@ -13,6 +13,12 @@ MonoBehaviour:
   m_Name: Level_4
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   levelNumber: 4
+  targetScore: 2500
+  taskDescription: "K\u0131rm\u0131z\u0131 coinden en az 1 kez x5 Kombo (Combo Core)
+    yap"
+  taskType: 4
+  taskTargetValue: 5
+  taskSecondaryValue: 4
   gridWidth: 6
   gridHeight: 8
   gridLayout: '011110
@@ -30,5 +36,3 @@ MonoBehaviour:
     111111
 
     011110'
-  targetScore: 90
-  targetCombo: 6

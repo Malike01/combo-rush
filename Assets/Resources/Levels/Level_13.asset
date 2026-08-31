@@ -12,7 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0893d8bd503c4644cacd68c0f320c520, type: 3}
   m_Name: Level_13
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
-  levelNumber: 3
+  levelNumber: 13
+  targetScore: 10500
+  taskDescription: Mor coinden en az 1 kez x10 Kombo (Combo Core) yap
+  taskType: 4
+  taskTargetValue: 10
+  taskSecondaryValue: 3
   gridWidth: 6
   gridHeight: 8
   gridLayout: '111111
@@ -30,5 +35,3 @@ MonoBehaviour:
     111111
 
     111111'
-  targetScore: 270
-  targetCombo: 12

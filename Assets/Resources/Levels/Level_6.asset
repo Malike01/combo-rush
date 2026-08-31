@@ -13,6 +13,11 @@ MonoBehaviour:
   m_Name: Level_6
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   levelNumber: 6
+  targetScore: 3800
+  taskDescription: "En az 1 kez Satisfied(5x-6x) y\xFCz ifadeli coin patlat"
+  taskType: 3
+  taskTargetValue: 1
+  taskSecondaryValue: 1
   gridWidth: 6
   gridHeight: 8
   gridLayout: '001111
@@ -30,5 +35,3 @@ MonoBehaviour:
     111111
 
     111111'
-  targetScore: 120
-  targetCombo: 7

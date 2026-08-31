@@ -31,7 +31,8 @@ public class MainMenuManager : MonoBehaviour
     {
         if (isLoggedIn)
         {
-            StartGameFlow();
+            StartGameFlow();  
+
         }
         else
         {
@@ -42,7 +43,9 @@ public class MainMenuManager : MonoBehaviour
     public void OnClickPlayAsGuest()
     {
         Debug.Log("Misafir girişi seçildi. Oyuna geçiliyor...");
+
         StartGameFlow();
+
     }
 
     public void OnClickGoogleLogin()
@@ -75,6 +78,11 @@ public class MainMenuManager : MonoBehaviour
         if (ComboTimerManager.Instance != null)
         {
             ComboTimerManager.Instance.ResetTimerFull();
+        }
+                
+        if (LevelManager.Instance != null)
+        {
+            LevelManager.Instance.StartGameFromMenu();
         }
     }
 

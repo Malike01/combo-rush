@@ -12,7 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0893d8bd503c4644cacd68c0f320c520, type: 3}
   m_Name: Level_18
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
-  levelNumber: 8
+  levelNumber: 18
+  targetScore: 18000
+  taskDescription: En az 1 kez Overjoyed(15x-19x) coin patlat.
+  taskType: 3
+  taskTargetValue: 3
+  taskSecondaryValue: 1
   gridWidth: 6
   gridHeight: 8
   gridLayout: '111111
@@ -30,5 +35,3 @@ MonoBehaviour:
     111111
 
     111111'
-  targetScore: 390
-  targetCombo: 16

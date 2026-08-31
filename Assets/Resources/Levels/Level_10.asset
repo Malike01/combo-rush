@@ -13,6 +13,11 @@ MonoBehaviour:
   m_Name: Level_10
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   levelNumber: 10
+  targetScore: 7500
+  taskDescription: En az 1 kez x10 Kombo (Alive Core) yap.
+  taskType: 1
+  taskTargetValue: 10
+  taskSecondaryValue: 0
   gridWidth: 6
   gridHeight: 8
   gridLayout: '111111
@@ -30,5 +35,3 @@ MonoBehaviour:
     111111
 
     111111'
-  targetScore: 200
-  targetCombo: 9

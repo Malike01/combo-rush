@@ -13,6 +13,11 @@ MonoBehaviour:
   m_Name: Level_9
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   levelNumber: 9
+  targetScore: 6500
+  taskDescription: En az 2 adet Satisfied(5x-6x) )coin patlat
+  taskType: 3
+  taskTargetValue: 1
+  taskSecondaryValue: 2
   gridWidth: 6
   gridHeight: 8
   gridLayout: '011110
@@ -30,5 +35,3 @@ MonoBehaviour:
     111111
 
     011110'
-  targetScore: 170
-  targetCombo: 8
