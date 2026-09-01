@@ -555,4 +555,34 @@ public class Coin : MonoBehaviour
                 squashSeq.Append(transform.DOScale(originalScale, 0.2f).SetEase(Ease.OutBack));
             });
     }
+
+  public void ShiftColorToNext()
+    {
+        if (isMysteryCoin) return; 
+        if (BoardManager.Instance == null || BoardManager.Instance.jellyThemes == null) return;
+
+        int totalThemes = BoardManager.Instance.jellyThemes.Length;
+        colorIndex = (colorIndex + 1) % totalThemes;
+
+        transform.DOKill(true); 
+        
+        Sequence magicShift = DOTween.Sequence();
+
+        magicShift.Append(transform.DORotate(new Vector3(0, 90, 0), 0.15f).SetEase(Ease.InQuad));
+
+        magicShift.AppendCallback(() => {
+            
+            progressionSprites = BoardManager.Instance.jellyThemes[colorIndex].progressionSprites;
+            
+            SpriteRenderer sr = GetComponent<SpriteRenderer>();
+            if (sr != null && progressionSprites.Length > 0)
+            {
+                sr.sprite = progressionSprites[0]; 
+            }
+
+            UpdateFaceByCombo(0); 
+        });
+
+        magicShift.Append(transform.DORotate(new Vector3(0, 0, 0), 0.15f).SetEase(Ease.OutQuad));
+    }
 }

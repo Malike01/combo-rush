@@ -37,6 +37,9 @@ public class LevelManager : MonoBehaviour
     private bool isComboSubTaskDone = false;
     private int currentVariantCount = 0;
 
+    private int mysteryCoinsPoppedCount = 0;
+    public int clockRotationCount = 0;
+
     void Awake()
     {
         if (Instance == null) Instance = this;

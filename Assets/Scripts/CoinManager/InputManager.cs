@@ -13,6 +13,7 @@ public class InputManager : MonoBehaviour
     public LineRenderer lineRenderer;
     public GameObject dragSparklePrefab;
     private bool hasGameStarted = false;
+    public static event System.Action OnPlayerMoveExecuted;
 
     [Header("Color Palette")]
     public Color[] jellyColors = new Color[]
@@ -46,8 +47,7 @@ public class InputManager : MonoBehaviour
 
     void Start()
     {
-        if (lineRenderer == null) {
-            lineRenderer = GetComponent<LineRenderer>();
+        if (lineRenderer == null) lineRenderer = GetComponent<LineRenderer>();
 
         if (lineRenderer != null)
         {
@@ -278,6 +278,8 @@ public class InputManager : MonoBehaviour
     {
         if (lineRenderer != null) lineRenderer.positionCount = 0;
 
+        OnPlayerMoveExecuted?.Invoke();
+
         Vector3 mergeCenter = coinsToMerge[coinsToMerge.Count - 1].transform.position;
         int coinCount = coinsToMerge.Count;
 
@@ -360,25 +362,16 @@ public class InputManager : MonoBehaviour
     {
         if (BoardManager.Instance != null && BoardManager.Instance.IsProcessing)
         {
-            Debug.Log("is Processing is locked");
             return true;
         }
 
         if (LevelManager.Instance != null && LevelManager.Instance.IsIntroPlaying)
         {
-            Debug.Log("is IntroPlaying is locked");
-            return true;
-        }
-
-        if (LevelEndManager.Instance != null && LevelEndManager.Instance.IsLevelEnded)
-        {
-            Debug.Log("is LevelEnded is locked");
             return true;
         }
 
         if (ComboTimerManager.Instance != null && ComboTimerManager.Instance.IsLevelFinished)
         {
-            Debug.Log("is ComboTimerManager is locked");
             return true;
         }
 

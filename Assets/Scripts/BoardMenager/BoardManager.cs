@@ -57,6 +57,10 @@ public partial class BoardManager : MonoBehaviour
     private Coin[,] board;
     public bool IsProcessing { get; private set; } = false;
 
+    [Header("Jokers")]
+    public GameObject tickTockJokerPrefab;
+    private GameObject activeJokerInstance;
+
     public static BoardManager Instance;
 
     private void Awake()
@@ -104,7 +108,7 @@ public partial class BoardManager : MonoBehaviour
         GenerateBoard();
     }
 
-    public void GenerateBoard()
+   public void GenerateBoard()
     {
         IsProcessing = false;
         if (currentLevel != null)
@@ -114,7 +118,6 @@ public partial class BoardManager : MonoBehaviour
             ParseGridLayout(); 
         }
 
-        // Clear existing cells and coins before generating a new board
         if (gridParent != null)
         {
             for (int i = gridParent.childCount - 1; i >= 0; i--)
@@ -125,35 +128,32 @@ public partial class BoardManager : MonoBehaviour
 
         board = new Coin[width, height]; 
 
-        CreateBoardBackground();   
         
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                // Skip inactive cells based on level design
                 if (activeCells != null && !activeCells[x, y]) continue;
 
                 Vector2 pos = GetWorldPosition(x, y);
 
-                // Generate background visual cell
                 if (cellPrefab != null)
                 {
                     Vector3 bgPos = new Vector3(pos.x, pos.y, 0.1f);
                     GameObject cell = Instantiate(cellPrefab, bgPos, Quaternion.identity, gridParent);
                     cell.name = $"Cell_{x}_{y}";
-                    cell.transform.localScale = new Vector3(1.15f, 1.15f, 1f);
+                    
+                    cell.transform.localScale = new Vector3(spacing * 7.5f, spacing * 7.5f, 1.2f);
 
                     SpriteRenderer cellSR = cell.GetComponent<SpriteRenderer>();
                     if (cellSR != null)
                     {
                         bool isEven = (x + y) % 2 == 0;
                         cellSR.color = isEven ? lightCellColor : darkCellColor;
-                        cellSR.sortingOrder = 0; 
+                        cellSR.sortingOrder = -5; 
                     }
                 }
 
-                // Generate the actual coin (Jelly)
                 SpawnJellyAt(x, y, new Vector3(pos.x, pos.y, -1f));
             }
         }
@@ -167,8 +167,10 @@ public partial class BoardManager : MonoBehaviour
         {
             InputManager.Instance.ResetInputState();
         }
-    }
 
+        SpawnCenterJokerIfNeeded();
+    }
+    
     private void ParseGridLayout()
     {
         activeCells = new bool[width, height];
@@ -545,5 +547,28 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
             }
         }
         yield return new WaitForSeconds(0.3f);
+    }
+
+   private void SpawnCenterJokerIfNeeded()
+    {
+        if (LevelManager.Instance == null || currentLevel == null) return;
+
+        if (activeJokerInstance != null) Destroy(activeJokerInstance);
+
+        if (currentLevel.taskType == ExtraTaskType.MysteryAndClock && tickTockJokerPrefab != null)
+        {
+            int centerX = width / 2;
+            int centerY = height / 2;
+
+            if (!activeCells[centerX, centerY])
+            {
+                Vector2 jokerPos = GetWorldPosition(centerX, centerY);
+                Vector3 finalSpawnPos = new Vector3(jokerPos.x, jokerPos.y, -1f);
+                
+                activeJokerInstance = Instantiate(tickTockJokerPrefab, finalSpawnPos, Quaternion.identity, gridParent);
+                
+                activeJokerInstance.transform.localScale = new Vector3(0.15f, 0.15f, 1f);
+            }
+        }
     }
 }
