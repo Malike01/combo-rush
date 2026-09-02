@@ -43,20 +43,10 @@ public class SettingsManager : MonoBehaviour
     // --- Language Control ---
     public void ToggleLanguage()
     {
-        currentLanguage = (currentLanguage == "TR") ? "EN" : "TR";
-        PlayerPrefs.SetString("Language", currentLanguage);
-        PlayerPrefs.Save();
+        string newLang = LocalizationManager.Instance.CurrentLanguage == "TR" ? "EN" : "TR";
+        LocalizationManager.Instance.SetLanguage(newLang);
         
         ApplySettings();
-        
-    }
-
-    // --- Contact Us ---
-    public void ContactUs()
-    {
-        string email = "destek@comborush.com";
-        string subject = "Combo Rush - Oyuncu Geri Bildirimi";
-        Application.OpenURL($"mailto:{email}?subject={subject}");
     }
 
     private void ApplySettings()
@@ -64,9 +54,21 @@ public class SettingsManager : MonoBehaviour
         AudioListener.volume = isMusicOn ? 1f : 0f;
         
         if (musicButtonText != null)
-            musicButtonText.text = isMusicOn ? "Müzik: Açık" : "Müzik: Kapalı";
+        {
+            string musicKey = isMusicOn ? "music_on" : "music_off";
+            musicButtonText.text = LocalizationManager.Instance.GetText(musicKey);
+        }
             
         if (languageButtonText != null)
-            languageButtonText.text = "Dil: " + currentLanguage;
+        {
+            languageButtonText.text = LocalizationManager.Instance.GetText("language_btn") + " " + LocalizationManager.Instance.CurrentLanguage;
+        }
+    }
+    // --- Contact Us ---
+    public void ContactUs()
+    {
+        string email = "destek@comborush.com";
+        string subject = "Combo Rush - Oyuncu Geri Bildirimi";
+        Application.OpenURL($"mailto:{email}?subject={subject}");
     }
 }

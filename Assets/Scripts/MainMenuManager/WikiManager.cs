@@ -5,9 +5,11 @@ using TMPro;
 [System.Serializable]
 public class WikiPage
 {
-    public string pageTitle;
-    [TextArea(5, 10)] 
-    public string pageContent;
+    [Tooltip("Localization Manager'daki başlık anahtarı (Örn: wiki_1_title)")]
+    public string titleKey; 
+    
+    [Tooltip("Localization Manager'daki içerik anahtarı (Örn: wiki_1_content)")]
+    public string contentKey; 
 }
 
 public class WikiManager : MonoBehaviour
@@ -19,9 +21,25 @@ public class WikiManager : MonoBehaviour
     public Button prevButton;
 
     [Header("Wiki Sayfaları")]
-    public WikiPage[] pages; 
+    public WikiPage[] pages;
 
     private int currentPageIndex = 0;
+
+    private void Start()
+    {
+        if (LocalizationManager.Instance != null)
+        {
+            LocalizationManager.Instance.OnLanguageChanged += UpdatePageDisplay;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (LocalizationManager.Instance != null)
+        {
+            LocalizationManager.Instance.OnLanguageChanged -= UpdatePageDisplay;
+        }
+    }
 
     private void OnEnable()
     {
@@ -51,8 +69,19 @@ public class WikiManager : MonoBehaviour
     {
         if (pages == null || pages.Length == 0) return;
 
-        titleText.text = pages[currentPageIndex].pageTitle;
-        contentText.text = pages[currentPageIndex].pageContent;
+        string tKey = pages[currentPageIndex].titleKey;
+        string cKey = pages[currentPageIndex].contentKey;
+
+        if (LocalizationManager.Instance != null)
+        {
+            titleText.text = LocalizationManager.Instance.GetText(tKey);
+            contentText.text = LocalizationManager.Instance.GetText(cKey);
+        }
+        else
+        {
+            titleText.text = tKey;
+            contentText.text = cKey;
+        }
 
         prevButton.interactable = (currentPageIndex > 0);
         nextButton.interactable = (currentPageIndex < pages.Length - 1);
