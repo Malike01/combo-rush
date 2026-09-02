@@ -172,7 +172,7 @@ public class LevelManager : MonoBehaviour
 
         if (targetLevel != null)
         {
-            if (currentLevelText != null) currentLevelText.text = "Level " + targetLevel.levelNumber;
+            if (currentLevelText != null) currentLevelText.text = "Level " + '\n' + targetLevel.levelNumber;
             
             if (extraTaskText != null)
             {

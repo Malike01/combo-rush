@@ -285,6 +285,7 @@ GameObject:
   - component: {fileID: 3102720193543912478}
   - component: {fileID: 4522100554422072318}
   - component: {fileID: 1417705874465587420}
+  - component: {fileID: -995091986832212737}
   m_Layer: 5
   m_Name: PlayerComboSlot
   m_TagString: Untagged
@@ -351,3 +352,18 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &-995091986832212737
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8858340898082125189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3291e7490c5b5a14b87d23b44e7e54b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerComboSlot
+  backgroundImage: {fileID: 1417705874465587420}
+  nameText: {fileID: 5089520590345369332}
+  comboText: {fileID: 4989650705174337866}

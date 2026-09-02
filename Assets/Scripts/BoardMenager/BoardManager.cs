@@ -122,7 +122,12 @@ public partial class BoardManager : MonoBehaviour
         {
             for (int i = gridParent.childCount - 1; i >= 0; i--)
             {
-                DestroyImmediate(gridParent.GetChild(i).gameObject); 
+                Transform child = gridParent.GetChild(i);
+                if (child.name == "BoardFrame") 
+                {
+                    continue; 
+                }
+                DestroyImmediate(child.gameObject); 
             }
         }
 
@@ -136,23 +141,6 @@ public partial class BoardManager : MonoBehaviour
                 if (activeCells != null && !activeCells[x, y]) continue;
 
                 Vector2 pos = GetWorldPosition(x, y);
-
-                if (cellPrefab != null)
-                {
-                    Vector3 bgPos = new Vector3(pos.x, pos.y, 0.1f);
-                    GameObject cell = Instantiate(cellPrefab, bgPos, Quaternion.identity, gridParent);
-                    cell.name = $"Cell_{x}_{y}";
-                    
-                    cell.transform.localScale = new Vector3(spacing * 7.5f, spacing * 7.5f, 1.2f);
-
-                    SpriteRenderer cellSR = cell.GetComponent<SpriteRenderer>();
-                    if (cellSR != null)
-                    {
-                        bool isEven = (x + y) % 2 == 0;
-                        cellSR.color = isEven ? lightCellColor : darkCellColor;
-                        cellSR.sortingOrder = -5; 
-                    }
-                }
 
                 SpawnJellyAt(x, y, new Vector3(pos.x, pos.y, -1f));
             }
