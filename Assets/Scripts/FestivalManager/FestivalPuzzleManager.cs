@@ -119,7 +119,21 @@ public class FestivalPuzzleManager : MonoBehaviour
 
         if (isWin)
         {
-            Debug.Log("TEBRİKLER! PUZZLE ÇÖZÜLDÜ, COIN EKLENİYOR...");
+            int festivalAward = Random.Range(50, 201); 
+            Vector3 boardCenterPos = puzzleBoard.transform.position;
+            Transform globalCoinUI = GlobalCoinManager.Instance.totalCoinText.transform.parent;
+
+            if (CoinFlyEffect.Instance != null)
+            {
+                CoinFlyEffect.Instance.PlayCoinFlyAnimation(boardCenterPos, globalCoinUI, festivalAward, () =>
+                {
+                    GlobalCoinManager.Instance.AddGlobalCoins(festivalAward);
+                });
+            }
+            else
+            {
+                GlobalCoinManager.Instance.AddGlobalCoins(festivalAward);
+            }
         }
     }
 

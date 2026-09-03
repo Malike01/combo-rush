@@ -244,6 +244,26 @@ public class LevelManager : MonoBehaviour
         int nextLevelNum = currentLevelIndex + 2; 
         int maxUnlocked = PlayerPrefs.GetInt("MaxUnlockedLevel", 1);
         if (nextLevelNum > maxUnlocked) PlayerPrefs.SetInt("MaxUnlockedLevel", nextLevelNum);
+
+        int winCoin = ScoreManager.Instance.currentScore; 
+
+        Vector3 moneyBagPos = ScoreManager.Instance.gameObject.transform.position; 
+    
+        Transform globalKasaUI = GlobalCoinManager.Instance.totalCoinText.transform.parent;
+
+        if (CoinFlyEffect.Instance != null)
+        {
+            CoinFlyEffect.Instance.PlayCoinFlyAnimation(moneyBagPos, globalKasaUI, winCoin, () =>
+        {
+            GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
+            ScoreManager.Instance.ResetLevelData();
+        });
+        }
+        else
+        {
+            GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
+            ScoreManager.Instance.ResetLevelData();
+        }
     }
 
     private void GenerateLevelUI()

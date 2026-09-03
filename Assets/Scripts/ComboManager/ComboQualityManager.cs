@@ -87,7 +87,7 @@ public class ComboQualityManager : MonoBehaviour
 
         if (AudioManager.Instance != null)
         {
-            // AudioManager.Instance.PlayComboQualitySound(jellyCount);
+            AudioManager.Instance.PlayComboQualitySound(jellyCount);
         }
     }
 
