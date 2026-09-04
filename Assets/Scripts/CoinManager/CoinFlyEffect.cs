@@ -12,7 +12,14 @@ public class CoinFlyEffect : MonoBehaviour
     
     private void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null) 
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Destroy(gameObject);
+        }
     }
 
     public void PlayCoinFlyAnimation(Vector3 startWorldPos, Transform targetUI, int coinAmount, System.Action onComplete = null)

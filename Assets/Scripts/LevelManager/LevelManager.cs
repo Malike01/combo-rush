@@ -249,21 +249,25 @@ public class LevelManager : MonoBehaviour
 
         Vector3 moneyBagPos = ScoreManager.Instance.gameObject.transform.position; 
     
-        Transform globalKasaUI = GlobalCoinManager.Instance.totalCoinText.transform.parent;
+        if (CoinFlyEffect.Instance != null && GlobalCoinManager.Instance != null)
+            {
+                Vector3 moneyBoxPos = ScoreManager.Instance != null ? ScoreManager.Instance.gameObject.transform.position : Vector3.zero;
+                Transform globalSafeUI = GlobalCoinManager.Instance.totalCoinText.transform.parent;
 
-        if (CoinFlyEffect.Instance != null)
-        {
-            CoinFlyEffect.Instance.PlayCoinFlyAnimation(moneyBagPos, globalKasaUI, winCoin, () =>
-        {
-            GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
-            ScoreManager.Instance.ResetLevelData();
-        });
-        }
-        else
-        {
-            GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
-            ScoreManager.Instance.ResetLevelData();
-        }
+                CoinFlyEffect.Instance.PlayCoinFlyAnimation(moneyBoxPos, globalSafeUI, winCoin, () =>
+                {
+                    GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
+                    ScoreManager.Instance.ResetLevelData();
+                });
+            }
+            else
+            {
+                if (GlobalCoinManager.Instance != null)
+                {
+                    GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
+                    ScoreManager.Instance.ResetLevelData();
+                }
+            }
     }
 
     private void GenerateLevelUI()

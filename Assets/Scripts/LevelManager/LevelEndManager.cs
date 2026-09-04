@@ -76,28 +76,25 @@ public class LevelEndManager : MonoBehaviour
         StartCoroutine(ShowLevelEndSequence());
     }
 
-    private IEnumerator ShowLevelEndSequence()
+   private IEnumerator ShowLevelEndSequence()
     {
         bool isWin = EvaluateLevelResults();
 
-        // 1. Hide the purple background image temporarily
+        if (winContentGroup != null) winContentGroup.SetActive(false);
+        if (loseContentGroup != null) loseContentGroup.SetActive(false);
+
         Image panelBgImage = null;
         if (levelEndPanel != null)
         {
             panelBgImage = levelEndPanel.GetComponent<Image>();
             if (panelBgImage != null) panelBgImage.enabled = false;
         }
-
-        // 2. Hide inner contents
-        if (winContentGroup != null) winContentGroup.SetActive(false);
-        if (loseContentGroup != null) loseContentGroup.SetActive(false);
         
         foreach (GameObject uiElement in otherUIElements)
         {
             if (uiElement != null && uiElement != levelEndPanel) uiElement.SetActive(false);
         }
 
-        // 3. Play victory or defeat popup banner
         GameObject activePopupTexture = isWin ? levelCompleteTexture : gameOverTexture;
 
         if (activePopupTexture != null) 
@@ -119,7 +116,6 @@ public class LevelEndManager : MonoBehaviour
             activePopupTexture.SetActive(false);
         }
 
-        // 4. Restore background panel and common buttons
         if (panelBgImage != null) panelBgImage.enabled = true;
 
         foreach (GameObject uiElement in otherUIElements)
@@ -127,18 +123,18 @@ public class LevelEndManager : MonoBehaviour
             if (uiElement != null && uiElement != levelEndPanel) uiElement.SetActive(true);
         }
 
-        // 5. Open specific content group and trigger star punch animation
         if (isWin) 
         {
             if (winContentGroup != null) winContentGroup.SetActive(true);
+            if (loseContentGroup != null) loseContentGroup.SetActive(false); 
             AnimateStarBanner();
         }
         else 
         {
             if (loseContentGroup != null) loseContentGroup.SetActive(true);
+            if (winContentGroup != null) winContentGroup.SetActive(false); 
         }
     }
-
     private bool EvaluateLevelResults()
     {
         if (LevelManager.Instance == null || ScoreManager.Instance == null) return false;
