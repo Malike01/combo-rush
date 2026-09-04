@@ -239,7 +239,7 @@ public class LevelManager : MonoBehaviour
         ProcessExtraTask(0, -1, false, 0);
     }
 
-    public void LevelCompletedSuccess()
+public void LevelCompletedSuccess()
     {
         int nextLevelNum = currentLevelIndex + 2; 
         int maxUnlocked = PlayerPrefs.GetInt("MaxUnlockedLevel", 1);
@@ -247,27 +247,26 @@ public class LevelManager : MonoBehaviour
 
         int winCoin = ScoreManager.Instance.currentScore; 
 
-        Vector3 moneyBagPos = ScoreManager.Instance.gameObject.transform.position; 
+        Vector3 screenPos = Camera.main.WorldToScreenPoint(ScoreManager.Instance.gameObject.transform.position); 
     
         if (CoinFlyEffect.Instance != null && GlobalCoinManager.Instance != null)
-            {
-                Vector3 moneyBoxPos = ScoreManager.Instance != null ? ScoreManager.Instance.gameObject.transform.position : Vector3.zero;
-                Transform globalSafeUI = GlobalCoinManager.Instance.totalCoinText.transform.parent;
+        {
+            Transform globalSafeUI = GlobalCoinManager.Instance.totalCoinText.transform.parent;
 
-                CoinFlyEffect.Instance.PlayCoinFlyAnimation(moneyBoxPos, globalSafeUI, winCoin, () =>
-                {
-                    GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
-                    ScoreManager.Instance.ResetLevelData();
-                });
-            }
-            else
+            CoinFlyEffect.Instance.PlayCoinFlyAnimation(screenPos, globalSafeUI, winCoin, () =>
             {
-                if (GlobalCoinManager.Instance != null)
-                {
-                    GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
-                    ScoreManager.Instance.ResetLevelData();
-                }
+                GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
+                ScoreManager.Instance.ResetLevelData();
+            });
+        }
+        else
+        {
+            if (GlobalCoinManager.Instance != null)
+            {
+                GlobalCoinManager.Instance.AddGlobalCoins(winCoin);
+                ScoreManager.Instance.ResetLevelData();
             }
+        }
     }
 
     private void GenerateLevelUI()

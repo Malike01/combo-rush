@@ -15,7 +15,8 @@ public class ComboTimerManager : MonoBehaviour
 
     private float currentTime;
     private bool isTimerRunning = false;
-    public bool IsLevelFinished { get; private set; } = false;
+    
+    public bool IsLevelFinished { get; set; } = false;
 
     [Header("UI References")]
     public Image timerFillImage;
@@ -32,6 +33,7 @@ public class ComboTimerManager : MonoBehaviour
     public RectTransform dropletPoint;
     public ParticleSystem dropletParticles;
     private float barWidth;
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -108,26 +110,21 @@ public class ComboTimerManager : MonoBehaviour
             dropletParticles.Stop();
         }
     }
-    /// <summary>
-    /// Starts the timer or adds extra bonus time to the active timer without resetting completely.
-    /// </summary>
+
     public void StartOrResetTimer()
     {
         if (IsLevelFinished) return;
 
         if (!isTimerRunning)
         {
-            // First hit: initialize with full or default base time and start running
             currentTime = maxTime;
             isTimerRunning = true;
         }
         else
         {
-            // Add bonus time incrementally on each combo, capped at maxTime
             currentTime = Mathf.Min(currentTime + timeBonusPerCombo, maxTime);
         }
 
-        // If time recovers above the panic threshold, stop panic state safely
         if (currentTime > 2.0f && panicRoutine != null)
         {
             StopCoroutine(panicRoutine);
@@ -191,8 +188,11 @@ public class ComboTimerManager : MonoBehaviour
     }
 
     private void TimeOut()
-    {
-        if (IsLevelFinished) return;
+    {        
+        if (IsLevelFinished) 
+        {
+            return;
+        }
 
         IsLevelFinished = true;
         isTimerRunning = false;
@@ -215,12 +215,23 @@ public class ComboTimerManager : MonoBehaviour
             timerUIRoot.localScale = Vector3.one;
         }
 
-        if (LevelEndManager.Instance != null)
+        try 
         {
-           LevelEndManager.Instance.ShowLevelEndScreen();
+            if (LevelEndManager.Instance != null)
+            {
+               LevelEndManager.Instance.ShowLevelEndScreen();
+            }
+            else
+            {
+                Debug.LogWarning("LevelEndManager.Instance BULUNAMADI!");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"LevelEndScreen açılırken hata oluştu: {e.Message}\n{e.StackTrace}");
         }
 
-        Debug.Log("TIME OVER! GAME OVER.");
+        Debug.Log("TIME OVER! GAME OVER. (Tüm işlemler tamamlandı)");
     }
 
     private IEnumerator PopTimerUI()

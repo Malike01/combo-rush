@@ -163,6 +163,9 @@ public class LevelEndManager : MonoBehaviour
 
     private void SetupWinScreen(int currentScore, int maxCombo, LevelData activeLevel)
     {
+        if (winContentGroup != null) winContentGroup.SetActive(true);
+        if (loseContentGroup != null) loseContentGroup.SetActive(false);
+
         int stars = 1;
         if (currentScore >= activeLevel.targetScore * 2) stars = 3; 
         else if (currentScore >= activeLevel.targetScore + (activeLevel.targetScore / 2f)) stars = 2; 
