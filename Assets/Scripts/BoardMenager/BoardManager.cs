@@ -474,6 +474,9 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
     {
         IsProcessing = true;
 
+        List<Coin> mysteryCoins = new List<Coin>();
+        List<Coin> normalCoins = new List<Coin>();
+
         for (int i = 0; i < matchedCoins.Count; i++)
         {
             Coin coin = matchedCoins[i];
@@ -484,24 +487,42 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
 
                 if (coin.isMysteryCoin)
                 {
-                    Vector3 revealTarget = Vector3.Lerp(coin.transform.position, new Vector3(0f, 1.5f, -2f), 0.35f);
-                    StartCoroutine(coin.RevealMysteryCoinRoutine(revealTarget, i * 0.08f));
+                    mysteryCoins.Add(coin);
                 }
                 else
                 {
-                    StartCoroutine(FlyJellyToUI(coin.gameObject, i * 0.08f));
+                    normalCoins.Add(coin);
                 }
             }
         }
 
-        yield return new WaitForSeconds(0.15f);
+        for (int i = 0; i < normalCoins.Count; i++)
+        {
+            StartCoroutine(FlyJellyToUI(normalCoins[i].gameObject, i * 0.08f));
+        }
+
+        if (mysteryCoins.Count == 0)
+        {
+            yield return new WaitForSeconds(0.15f);
+        }
+
+        for (int i = 0; i < mysteryCoins.Count; i++)
+        {
+            Coin mCoin = mysteryCoins[i];
+            if (mCoin != null)
+            {
+                Vector3 revealTarget = Vector3.Lerp(mCoin.transform.position, new Vector3(0f, 1.5f, -2f), 0.35f);
+                
+                yield return StartCoroutine(mCoin.RevealMysteryCoinRoutine(revealTarget, 0f));
+            }
+        }
+
         yield return StartCoroutine(CollapseGridRoutine());
         yield return StartCoroutine(RefillGridRoutine());
 
         IsProcessing = false;
         CheckForPossibleMoves();
     }
-
     private IEnumerator CollapseGridRoutine()
     {
         for (int x = 0; x < width; x++)

@@ -26,6 +26,7 @@ public class Coin : MonoBehaviour
     private SpriteRenderer selectionGlowRenderer;
     private GameObject mysteryValueObject;
     private TextMeshPro mysteryValueText;
+    [SerializeField] private TMP_FontAsset mysteryFont;
     private static readonly Color selectionGlowColor = new Color(1f, 0.4f, 0.85f, 0.45f);
     private const float selectionGlowScaleFactor = 1.2f;
     
@@ -35,7 +36,6 @@ public class Coin : MonoBehaviour
 
     private Coroutine activeScaleRoutine;
     private Coroutine wiggleCoroutine;
-
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -142,6 +142,7 @@ public class Coin : MonoBehaviour
         mysteryValueText.alignment = TextAlignmentOptions.Center;
         mysteryValueText.raycastTarget = false;
         mysteryValueText.enableAutoSizing = false;
+        mysteryValueText.font = mysteryFont;
         mysteryValueText.fontSize = 20f;
         mysteryValueText.fontSizeMin = 6f;
         mysteryValueText.fontSizeMax = 12f;
@@ -466,7 +467,7 @@ public class Coin : MonoBehaviour
             float spinAngle = Mathf.Lerp(0f, 720f, eased);
 
             transform.position = Vector3.Lerp(startPos, targetPosition, eased);
-            transform.localScale = Vector3.Lerp(startScale, originalScale * 2.8f, eased);
+            transform.localScale = Vector3.Lerp(startScale, originalScale * 1.5f, eased);
             transform.rotation = Quaternion.Euler(0f, 0f, spinAngle);
 
             float alphaT = Mathf.Clamp01((t - 0.6f) / 0.4f);
@@ -479,7 +480,7 @@ public class Coin : MonoBehaviour
         if (this != null && gameObject != null)
         {
             transform.position = targetPosition;
-            transform.localScale = originalScale * 2.8f;
+            transform.localScale = originalScale * 1.5f;
             transform.rotation = Quaternion.identity;
             SetMysteryValueAlpha(1f);
         }

@@ -79,6 +79,16 @@ public class LevelManager : MonoBehaviour
     {
         if (index >= allLevels.Count) return;
 
+        if (LevelEndManager.Instance != null)
+        {
+            LevelEndManager.Instance.ResetForNewLevel();
+        }
+
+        if (ComboTimerManager.Instance != null)
+        {
+            ComboTimerManager.Instance.ResetTimerFull();
+        }
+
         IsIntroPlaying = false;
         currentLevelIndex = index;
         PlayerPrefs.SetInt("LastPlayedLevel", currentLevelIndex);

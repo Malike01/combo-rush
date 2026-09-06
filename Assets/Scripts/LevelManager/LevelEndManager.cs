@@ -16,7 +16,7 @@ public class LevelEndManager : MonoBehaviour
     [Header("Delay & Visual Effects (Popups)")]
     public GameObject levelCompleteTexture; 
     public GameObject gameOverTexture;      
-    public float popupTextureScale = 0.7f; 
+    public float popupTextureScale = 0.4f; 
     public GameObject[] otherUIElements; 
 
     [Header("Win UI")]
@@ -74,6 +74,39 @@ public class LevelEndManager : MonoBehaviour
         transform.SetAsLastSibling(); 
         
         StartCoroutine(ShowLevelEndSequence());
+    }
+
+    public void ResetForNewLevel()
+    {
+        StopAllCoroutines();
+        IsLevelEnded = false;
+
+        if (levelCompleteTexture != null)
+        {
+            levelCompleteTexture.transform.DOKill();
+            levelCompleteTexture.SetActive(false);
+        }
+
+        if (gameOverTexture != null)
+        {
+            gameOverTexture.transform.DOKill();
+            gameOverTexture.SetActive(false);
+        }
+
+        if (singleStarDisplayImage != null)
+        {
+            singleStarDisplayImage.transform.DOKill();
+            singleStarDisplayImage.gameObject.SetActive(false);
+        }
+
+        if (levelEndPanel != null) levelEndPanel.SetActive(false);
+        if (winContentGroup != null) winContentGroup.SetActive(false);
+        if (loseContentGroup != null) loseContentGroup.SetActive(false);
+
+        foreach (GameObject uiElement in otherUIElements)
+        {
+            if (uiElement != null && uiElement != levelEndPanel) uiElement.SetActive(true);
+        }
     }
 
    private IEnumerator ShowLevelEndSequence()
@@ -243,10 +276,7 @@ public class LevelEndManager : MonoBehaviour
     {
         bool won = (winContentGroup != null && winContentGroup.activeSelf);
 
-        IsLevelEnded = false;
-        if (levelEndPanel != null) levelEndPanel.SetActive(false);
-        if (winContentGroup != null) winContentGroup.SetActive(false);
-        if (loseContentGroup != null) loseContentGroup.SetActive(false);
+        ResetForNewLevel();
 
         if (BoardManager.Instance != null) BoardManager.Instance.ResetProcessingState();
         if (LevelManager.Instance != null) LevelManager.Instance.ResetIntroState();
