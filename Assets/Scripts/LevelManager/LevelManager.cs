@@ -132,14 +132,26 @@ public class LevelManager : MonoBehaviour
         // 1. Lock the gameplay while the intro is playing
         IsIntroPlaying = true; 
 
+        string lvlPrefix = LocalizationManager.Instance != null ? LocalizationManager.Instance.GetText("level_prefix") : "LEVEL";
+        string targetPrefix = LocalizationManager.Instance != null ? LocalizationManager.Instance.GetText("target_prefix") : "Hedef:";
+        string pointsSuffix = LocalizationManager.Instance != null ? LocalizationManager.Instance.GetText("points_suffix") : "Puan";
+        string missionPrefix = LocalizationManager.Instance != null ? LocalizationManager.Instance.GetText("mission_prefix") : "Görev:";
+        string justPointsText = LocalizationManager.Instance != null ? LocalizationManager.Instance.GetText("just_points") : "Sadece Puan Topla!";
+
         // 2. Set the texts based on the current level data
-        if (introLevelTitleText != null) introLevelTitleText.text = $"LEVEL {level.levelNumber}";
-        if (introTargetScoreText != null) introTargetScoreText.text = $"Hedef: {level.targetScore} Puan";
+        if (introLevelTitleText != null) introLevelTitleText.text = $"{lvlPrefix} {level.levelNumber}";
+        if (introTargetScoreText != null) introTargetScoreText.text = $"{targetPrefix}: {level.targetScore} {pointsSuffix}";
         
         if (introTaskDescText != null)
         {
-            string taskStr = level.taskType != ExtraTaskType.None ? level.taskDescription : "Sadece Puan Topla!";
-            introTaskDescText.text = $"Görev: {taskStr}";
+           string taskKey = level.taskType != ExtraTaskType.None ? level.taskDescription : "just_points";
+            
+            if (LocalizationManager.Instance != null)
+            {
+                taskKey = LocalizationManager.Instance.GetText(taskKey);
+            }
+
+            introTaskDescText.text = $"{missionPrefix}: {taskKey}";
         }
 
         // 3. Prepare the panel for animation
@@ -254,6 +266,14 @@ public void LevelCompletedSuccess()
         int nextLevelNum = currentLevelIndex + 2; 
         int maxUnlocked = PlayerPrefs.GetInt("MaxUnlockedLevel", 1);
         if (nextLevelNum > maxUnlocked) PlayerPrefs.SetInt("MaxUnlockedLevel", nextLevelNum);
+
+        int nextLevelIndex = currentLevelIndex + 1;
+        if (nextLevelIndex < allLevels.Count)
+        {
+            PlayerPrefs.SetInt("LastPlayedLevel", nextLevelIndex);
+        }
+        
+        PlayerPrefs.Save();
 
         int winCoin = ScoreManager.Instance.currentScore; 
 

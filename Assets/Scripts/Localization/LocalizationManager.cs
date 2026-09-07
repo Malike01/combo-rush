@@ -1,74 +1,79 @@
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 
 [System.Serializable]
-public struct Translation
+public class TranslationItem 
 {
     public string key; 
-    [TextArea(1, 2)] public string tr;
-    [TextArea(1, 2)] public string en;
+    public string tr;
+    public string en;
 }
 
 public class LocalizationManager : MonoBehaviour
 {
     public static LocalizationManager Instance;
 
-    [Header("Çeviri Listesi")]
-    public List<Translation> translations;
+    public string CurrentLanguage { get; private set; } = "tr"; // Varsayılan dil
+    public event System.Action OnLanguageChanged;
 
-    public string CurrentLanguage { get; private set; }
-    
-    public event Action OnLanguageChanged;
+    [Header("Genel UI (Arayüz) Çevirileri")]
+    public List<TranslationItem> uiTranslations = new List<TranslationItem>();
 
-    private Dictionary<string, Translation> dictionary;
+    [Header("Görev (Task) Çevirileri")]
+    public List<TranslationItem> taskTranslations = new List<TranslationItem>();
+
+    [Header("Wiki & Bilgi Ekranı Çevirileri")]
+    public List<TranslationItem> wikiTranslations = new List<TranslationItem>();
+
+    private Dictionary<string, TranslationItem> allTranslationsDict = new Dictionary<string, TranslationItem>();
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            InitializeDictionary();
-            LoadLanguage();
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (Instance == null) Instance = this;
+        else { Destroy(gameObject); return; }
+
+        CurrentLanguage = PlayerPrefs.GetString("SelectedLanguage", "tr");
+
+        MergeListIntoDictionary(uiTranslations);
+        MergeListIntoDictionary(taskTranslations);
+        MergeListIntoDictionary(wikiTranslations);
     }
 
-    private void InitializeDictionary()
+    private void MergeListIntoDictionary(List<TranslationItem> listToMerge)
     {
-        dictionary = new Dictionary<string, Translation>();
-        foreach (var t in translations)
+        foreach (var item in listToMerge)
         {
-            if (!dictionary.ContainsKey(t.key))
+            if (!string.IsNullOrEmpty(item.key) && !allTranslationsDict.ContainsKey(item.key))
             {
-                dictionary.Add(t.key, t);
+                allTranslationsDict.Add(item.key, item);
             }
         }
     }
 
-    private void LoadLanguage()
-    {
-        CurrentLanguage = PlayerPrefs.GetString("Language", "TR");
-    }
 
-    public void SetLanguage(string langCode)
+    public void SetLanguage(string languageCode)
     {
-        CurrentLanguage = langCode;
-        PlayerPrefs.SetString("Language", CurrentLanguage);
+        if (CurrentLanguage == languageCode) return;
+
+        CurrentLanguage = languageCode;
+        PlayerPrefs.SetString("SelectedLanguage", CurrentLanguage);
         PlayerPrefs.Save();
 
         OnLanguageChanged?.Invoke();
     }
+
     public string GetText(string key)
     {
-        if (dictionary != null && dictionary.TryGetValue(key, out Translation t))
+        if (string.IsNullOrEmpty(key)) return "";
+
+        if (allTranslationsDict.ContainsKey(key))
         {
-            return CurrentLanguage == "TR" ? t.tr : t.en;
+            TranslationItem item = allTranslationsDict[key];
+            
+            if (CurrentLanguage == "tr" && !string.IsNullOrEmpty(item.tr)) return item.tr;
+            if (CurrentLanguage == "en" && !string.IsNullOrEmpty(item.en)) return item.en;
         }
+        
         return key; 
     }
 }

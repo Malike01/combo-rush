@@ -67,22 +67,27 @@ public class ScoreManager : MonoBehaviour
     {
         if (coinCount < 4) return; 
 
-        // Algorithmic length bonus: +20% for each coin beyond 4
-        float lengthBonus = 1f + ((coinCount - 4) * 0.2f); 
+        float lengthBonus = 1f;
+        if (coinCount > 3)
+        {
+            lengthBonus += (coinCount - 3) * 0.5f; 
+        }
+
+        // Kombo 1 = 1.0x | Kombo 2 = 1.2x | Kombo 3 = 1.4x
+        float comboMultiplier = 1f + ((currentCombo - 1) * 0.2f); 
         
-        int gainedScore = Mathf.RoundToInt(totalCoinValue * lengthBonus * currentCombo); 
+        int gainedScore = Mathf.RoundToInt(totalCoinValue * lengthBonus * comboMultiplier); 
 
         currentScore += gainedScore; 
         currentCombo++;              
 
-        // Update the record combo for the level end screen
         if (currentCombo > maxComboReached)
         {
             maxComboReached = currentCombo;
         }
 
         UpdateUI(); 
-        TriggerPunchAnimation(); 
+        TriggerPunchAnimation();
     }
 
     public void ResetCombo()

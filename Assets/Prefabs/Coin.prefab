@@ -154,6 +154,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 39e0bff0fdfc3c8418d953be518e7bf0, type: 3}
   - {fileID: 21300000, guid: fce63aa9f3923ca408bf45d414984d8f, type: 3}
   - {fileID: 21300000, guid: 30f00f5b9d488a5488e022520b283505, type: 3}
+  mysteryFont: {fileID: 11400000, guid: 26b1e9acbd9212b41ad2cc30cf4246fb, type: 2}
 --- !u!114 &-1948825897108073321
 MonoBehaviour:
   m_ObjectHideFlags: 0

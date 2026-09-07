@@ -34,7 +34,7 @@ public class LevelEndManager : MonoBehaviour
     public Sprite star3Texture;
 
     [Tooltip("Final scale size of the star banner on screen")]
-    public float starFinalScale = 1.0f; 
+    public float starFinalScale = 1f; 
 
     public TextMeshProUGUI winScoreAndComboText;   
     public TextMeshProUGUI winNextLevelTargetText; 
@@ -47,6 +47,10 @@ public class LevelEndManager : MonoBehaviour
     [Header("References")]
     public ComboTimerManager timerManager; 
     public BoardManager boardManager; 
+
+    [Header("Audio (Popup Sesleri)")]
+    public AudioClip winPopupSound; 
+    public AudioClip losePopupSound;
 
     public bool IsLevelEnded { get; private set; } = false;
 
@@ -129,6 +133,7 @@ public class LevelEndManager : MonoBehaviour
         }
 
         GameObject activePopupTexture = isWin ? levelCompleteTexture : gameOverTexture;
+        AudioClip activeSound = isWin ? winPopupSound : losePopupSound;
 
         if (activePopupTexture != null) 
         {
@@ -138,6 +143,12 @@ public class LevelEndManager : MonoBehaviour
             
             Vector3 targetScale = Vector3.one * popupTextureScale;
             activePopupTexture.transform.DOScale(targetScale, 0.6f).SetEase(Ease.OutBounce);
+
+            if (AudioManager.Instance != null && activeSound != null)
+            {
+
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.levelEndSound, 1.0f, 1.0f); 
+            }
         }
 
         yield return new WaitForSeconds(3f);
@@ -218,10 +229,10 @@ public class LevelEndManager : MonoBehaviour
             else if (stars >= 3 && star3Texture != null) singleStarDisplayImage.sprite = star3Texture;
 
             // Maintain native texture aspect ratio so it doesn't stretch or shrink weirdly
-            singleStarDisplayImage.SetNativeSize();
+            // singleStarDisplayImage.SetNativeSize();
         }
 
-        if (winScoreAndComboText != null) winScoreAndComboText.text = $"Toplanan: {currentScore} Coin | Maks Kombo: x{maxCombo}";
+        if (winScoreAndComboText != null) winScoreAndComboText.text = $"Toplanan: {currentScore} Coin \nMaks Kombo: x{maxCombo}";
 
         if (winNextLevelTargetText != null)
         {
@@ -283,7 +294,7 @@ public class LevelEndManager : MonoBehaviour
         if (ScoreManager.Instance != null) ScoreManager.Instance.ResetLevelData();
         if (ComboTimerManager.Instance != null) ComboTimerManager.Instance.ResetTimerFull();
 
-        InputManager inputMgr = Object.FindFirstObjectByType<InputManager>();
+        InputManager inputMgr = Object.FindAnyObjectByType<InputManager>();
         if (inputMgr != null)
         {
             inputMgr.ResetInputState();

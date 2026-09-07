@@ -83,7 +83,15 @@ public class WikiManager : MonoBehaviour
             contentText.text = cKey;
         }
 
-        prevButton.interactable = (currentPageIndex > 0);
-        nextButton.interactable = (currentPageIndex < pages.Length - 1);
+
+        if (prevButton != null)
+        {
+            prevButton.gameObject.SetActive(currentPageIndex > 0);
+        }
+
+        if (nextButton != null)
+        {
+            nextButton.gameObject.SetActive(currentPageIndex < pages.Length - 1);
+        }
     }
 }
