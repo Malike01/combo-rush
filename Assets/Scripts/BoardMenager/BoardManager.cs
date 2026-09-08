@@ -413,10 +413,9 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
         int totalMatchValue = 0;
         int totalDestroyCount = finalCoinsToDestroy.Count; 
 
-        float dynamicMultiplier = 1.0f;
-        if (totalDestroyCount >= 5)
+        foreach (Coin coin in finalCoinsToDestroy) 
         {
-            dynamicMultiplier += (totalDestroyCount - 4) * comboMultiplierStep; 
+            totalMatchValue += coin.pointValue;
         }
 
         bool hasMystery = false;
@@ -426,18 +425,6 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
                                 totalDestroyCount >= 10 ? 3 : 
                                 totalDestroyCount >= 7 ? 2 : 
                                 totalDestroyCount >= 5 ? 1 : 0;
-
-        foreach (Coin coin in finalCoinsToDestroy) 
-        {
-            int baseValue = coin.pointValue;
-            
-            if (!coin.isMysteryCoin && baseValue > 0)
-            {
-                baseValue = Mathf.RoundToInt(baseValue * dynamicMultiplier);
-            }
-            
-            totalMatchValue += baseValue;
-        }
 
         if (ScoreManager.Instance != null) 
         {
