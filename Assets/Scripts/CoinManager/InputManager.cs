@@ -149,7 +149,7 @@ public class InputManager : MonoBehaviour
                 SetLineColor(startCoin.colorIndex);
             }
         }
-        else if (Input.GetMouseButton(0) && isDragging)
+   else if (Input.GetMouseButton(0) && isDragging)
         {
             Coin currentCoin = GetCoinUnderMouse();
             
@@ -157,8 +157,17 @@ public class InputManager : MonoBehaviour
             {
                 Coin lastCoin = selectedJellies[selectedJellies.Count - 1];
 
-                if (currentCoin.colorIndex == lastCoin.colorIndex && IsNeighbor(lastCoin, currentCoin))
+                // 1. Normal Kural: Renkler aynı mı?
+                bool isColorMatch = (currentCoin.colorIndex == lastCoin.colorIndex);
+                
+                // 2. GDD Kuralı: İkisi de Güç Jetonu mu? (Farklı renk olsalar bile çarpışabilirler!)
+                bool isPowerUpCombo = (lastCoin.currentPowerUp != PowerUpType.None && currentCoin.currentPowerUp != PowerUpType.None);
+
+                if ((isColorMatch || isPowerUpCombo) && IsNeighbor(lastCoin, currentCoin))
                 {
+                    // Sadece 2 jeton çarpıştırılabilir, oyuncunun 3.-4. jetonu seçmesini (zinciri uzatmasını) engelliyoruz.
+                    if (isPowerUpCombo && selectedJellies.Count >= 2) return; 
+
                     SelectCoin(currentCoin);
                 }
             }
@@ -173,7 +182,31 @@ public class InputManager : MonoBehaviour
             isDragging = false;
             ResetHoverTimer();
 
+            bool isPowerUpCombo = selectedJellies.Count == 2 && 
+                                  selectedJellies[0].currentPowerUp != PowerUpType.None && 
+                                  selectedJellies[1].currentPowerUp != PowerUpType.None;
+
+            if (selectedJellies.Count >= 4 || 
+               (selectedJellies.Count == 1 && selectedJellies[0].currentPowerUp != PowerUpType.None) ||
+               isPowerUpCombo) 
+            {
+                StartCoroutine(ProcessMergeSequence(new List<Coin>(selectedJellies)));
+            }
+            else
+            {
+                ClearSelection();
+            }
+        }
+        else if (Input.GetMouseButtonUp(0) && isDragging)
+        {
+            isDragging = false;
+            ResetHoverTimer();
+
             if (selectedJellies.Count >= 4) 
+            {
+                StartCoroutine(ProcessMergeSequence(new List<Coin>(selectedJellies)));
+            }
+            else if (selectedJellies.Count == 1 && selectedJellies[0].currentPowerUp != PowerUpType.None)
             {
                 StartCoroutine(ProcessMergeSequence(new List<Coin>(selectedJellies)));
             }
@@ -248,7 +281,7 @@ public class InputManager : MonoBehaviour
 
         foreach (Coin coin in selectedJellies)
         {
-            if (coin != null && !coin.isMysteryCoin)
+           if (coin != null && !coin.isMysteryCoin && coin.currentPowerUp == PowerUpType.None)
             {
                 coin.UpdateFaceByCombo(targetFaceLevel);
             }
@@ -329,7 +362,10 @@ public class InputManager : MonoBehaviour
             if (coin != null)
             {
                 coin.ResetShape();
-                if (!coin.isMysteryCoin) coin.UpdateFaceByCombo(0); 
+                if (!coin.isMysteryCoin && coin.currentPowerUp == PowerUpType.None) 
+                {
+                    coin.UpdateFaceByCombo(0); 
+                }
             }
         }
 

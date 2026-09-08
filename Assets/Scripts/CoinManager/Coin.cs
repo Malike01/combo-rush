@@ -13,6 +13,10 @@ public class Coin : MonoBehaviour
     public int colorIndex;
     public int pointValue; 
     public bool isMysteryCoin;
+
+    [Header("Power-Up Data")]
+    public PowerUpType currentPowerUp = PowerUpType.None;
+    public bool isPowerUp => currentPowerUp != PowerUpType.None;
     
     [Header("Combo Progression Sprites")]
     [Tooltip("Assign the face variants in order: Element 0 (Base) to Element 5 (Max Combo)")]

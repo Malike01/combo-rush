@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using DG.Tweening;
 
 public class ComboTimerManager : MonoBehaviour
 {
@@ -34,6 +35,13 @@ public class ComboTimerManager : MonoBehaviour
     public ParticleSystem dropletParticles;
     private float barWidth;
 
+    [Header("Time Bender Settings")]
+    public bool isTimeFrozen = false;
+    
+    [Header("Time Bender Visuals")]
+    public Image timeFreezeOverlay; 
+    public Color freezeTargetColor = new Color(0.1f, 0.1f, 0.3f, 0.45f);
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -53,6 +61,8 @@ public class ComboTimerManager : MonoBehaviour
     private void Update()
     {
         if (!isTimerRunning) return;
+
+        if (isTimeFrozen) return;
 
         currentTime -= Time.deltaTime;
         float fillRatio = Mathf.Clamp01(currentTime / maxTime);
@@ -288,5 +298,36 @@ public class ComboTimerManager : MonoBehaviour
             timerFillImage.enabled = true;
         }
         panicRoutine = null;
+    }
+
+    public void FreezeTime(float duration)
+    {
+        StartCoroutine(FreezeTimeRoutine(duration));
+    }
+
+private IEnumerator FreezeTimeRoutine(float duration)
+    {
+        isTimeFrozen = true;
+        
+        if (timeFreezeOverlay != null)
+        {
+            timeFreezeOverlay.gameObject.SetActive(true);
+            timeFreezeOverlay.DOColor(freezeTargetColor, 0.4f).SetEase(Ease.OutSine);
+        }
+
+        yield return new WaitForSeconds(duration); 
+        
+        isTimeFrozen = false;
+        
+        if (timeFreezeOverlay != null)
+        {
+            Color clearColor = new Color(freezeTargetColor.r, freezeTargetColor.g, freezeTargetColor.b, 0f);
+            
+            timeFreezeOverlay.DOColor(clearColor, 0.5f).SetEase(Ease.InSine)
+                .OnComplete(() => 
+                {
+                    timeFreezeOverlay.gameObject.SetActive(false);
+                });
+        }
     }
 }
