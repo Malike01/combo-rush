@@ -117,6 +117,9 @@ public class LevelEndManager : MonoBehaviour
     {
         bool isWin = EvaluateLevelResults();
 
+        if (levelCompleteTexture != null) levelCompleteTexture.SetActive(false);
+        if (gameOverTexture != null) gameOverTexture.SetActive(false);
+
         if (winContentGroup != null) winContentGroup.SetActive(false);
         if (loseContentGroup != null) loseContentGroup.SetActive(false);
 
@@ -146,8 +149,7 @@ public class LevelEndManager : MonoBehaviour
 
             if (AudioManager.Instance != null && activeSound != null)
             {
-
-                AudioManager.Instance.PlaySFX(AudioManager.Instance.levelEndSound, 1.0f, 1.0f); 
+                AudioManager.Instance.PlaySFX(activeSound, 1.0f, 1.0f); 
             }
         }
 
@@ -179,6 +181,7 @@ public class LevelEndManager : MonoBehaviour
             if (winContentGroup != null) winContentGroup.SetActive(false); 
         }
     }
+
     private bool EvaluateLevelResults()
     {
         if (LevelManager.Instance == null || ScoreManager.Instance == null) return false;
@@ -188,7 +191,7 @@ public class LevelEndManager : MonoBehaviour
         int currentScore = ScoreManager.Instance.currentScore;
         int maxCombo = ScoreManager.Instance.maxComboReached;
         int targetScore = activeLevel.targetScore;
-        bool isTaskCompleted = LevelManager.Instance.isExtraTaskCompleted;
+        bool isTaskCompleted = LevelManager.Instance.isExtraTaskCompleted && currentScore >= targetScore;
 
         bool isWin = (currentScore >= targetScore && isTaskCompleted);
 
@@ -232,7 +235,12 @@ public class LevelEndManager : MonoBehaviour
             // singleStarDisplayImage.SetNativeSize();
         }
 
-        if (winScoreAndComboText != null) winScoreAndComboText.text = $"Toplanan: {currentScore} Coin \nMaks Kombo: x{maxCombo}";
+       if (winScoreAndComboText != null)
+        {
+            int earnedCoins = Mathf.Max(1, Mathf.RoundToInt(currentScore * 0.05f));
+            
+            winScoreAndComboText.text = $"Bölüm Skoru: {currentScore}\nKazanılan: {earnedCoins} Coin\nMaks Kombo: x{maxCombo}";
+        }
 
         if (winNextLevelTargetText != null)
         {

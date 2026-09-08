@@ -275,7 +275,8 @@ public void LevelCompletedSuccess()
         
         PlayerPrefs.Save();
 
-        int winCoin = ScoreManager.Instance.currentScore; 
+        int totalScore = ScoreManager.Instance.currentScore;
+        int winCoin = Mathf.Max(1, Mathf.RoundToInt(totalScore * 0.05f));
 
         Vector3 screenPos = Camera.main.WorldToScreenPoint(ScoreManager.Instance.gameObject.transform.position); 
     

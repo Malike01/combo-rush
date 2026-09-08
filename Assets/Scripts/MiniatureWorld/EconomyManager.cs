@@ -5,12 +5,17 @@ public class EconomyManager : MonoBehaviour
 {
     public static EconomyManager Instance;
     
-    public int coins = 500; 
+    public int coins; 
     public TextMeshProUGUI coinText;
+
+    private readonly string coinKey = "GlobalTotalCoins"; 
 
     void Awake() 
     {
         if(Instance == null) Instance = this;
+
+        coins = PlayerPrefs.GetInt(coinKey, 500); 
+
         UpdateUI();
     }
 
@@ -19,9 +24,15 @@ public class EconomyManager : MonoBehaviour
         if(coins >= amount) 
         {
             coins -= amount;
+            
+            PlayerPrefs.SetInt(coinKey, coins);
+            PlayerPrefs.Save();
+            
             UpdateUI();
             return true;
         }
+        
+        Debug.LogWarning("Yetersiz Coin!");
         return false;
     }
 
@@ -29,7 +40,7 @@ public class EconomyManager : MonoBehaviour
     {
         if(coinText != null) 
         {
-            coinText.text = coins.ToString() + " Coin"; // Display the coin count with " Coin" suffix
+            coinText.text = coins.ToString() + " Coin"; 
         }
     }
 }

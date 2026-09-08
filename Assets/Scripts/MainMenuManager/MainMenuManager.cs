@@ -95,4 +95,5 @@ public class MainMenuManager : MonoBehaviour
     {
         if (wikiPanel != null) wikiPanel.SetActive(false);
     }
+
 }

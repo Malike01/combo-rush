@@ -13,7 +13,7 @@ public class LocalizationManager : MonoBehaviour
 {
     public static LocalizationManager Instance;
 
-    public string CurrentLanguage { get; private set; } = "tr"; // Varsayılan dil
+    public string CurrentLanguage { get; private set; } = "tr";
     public event System.Action OnLanguageChanged;
 
     [Header("Genel UI (Arayüz) Çevirileri")]
@@ -29,10 +29,14 @@ public class LocalizationManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this) 
+        { 
+            Destroy(gameObject); 
+            return; 
+        }
+        Instance = this;
 
-        CurrentLanguage = PlayerPrefs.GetString("SelectedLanguage", "tr");
+        CurrentLanguage = PlayerPrefs.GetString("SelectedLanguage", "tr").ToLower();
 
         MergeListIntoDictionary(uiTranslations);
         MergeListIntoDictionary(taskTranslations);
@@ -50,9 +54,10 @@ public class LocalizationManager : MonoBehaviour
         }
     }
 
-
     public void SetLanguage(string languageCode)
     {
+        languageCode = languageCode.ToLower(); 
+
         if (CurrentLanguage == languageCode) return;
 
         CurrentLanguage = languageCode;

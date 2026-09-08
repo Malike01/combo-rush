@@ -21,7 +21,7 @@ public class ScoreManager : MonoBehaviour
         new Color(1f, 0.85f, 0.1f, 1f)     
     );
 
-    public Color successColor = new Color(0.28f, 1f, 0.44f, 1f);
+    public Color successColor = new Color(0.0f, 1.0f, 0.0f, 1.0f);
 
     // --- PLAYER DATA ---
     public int currentScore { get; private set; } = 0; 

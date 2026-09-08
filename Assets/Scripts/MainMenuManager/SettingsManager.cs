@@ -22,11 +22,13 @@ public class SettingsManager : MonoBehaviour
 
     public void OpenSettingsPanel()
     {
+
         settingsPanel.SetActive(true);
     }
 
     public void CloseSettingsPanel()
     {
+
         settingsPanel.SetActive(false);
     }
 
@@ -43,10 +45,18 @@ public class SettingsManager : MonoBehaviour
     // --- Language Control ---
     public void ToggleLanguage()
     {
-        string newLang = LocalizationManager.Instance.CurrentLanguage == "TR" ? "EN" : "TR";
-        LocalizationManager.Instance.SetLanguage(newLang);
+        string currentLang = LocalizationManager.Instance.CurrentLanguage;
+
+        if (currentLang == "tr")
+        {
+            LocalizationManager.Instance.SetLanguage("en");
+        }
+        else
+        {
+            LocalizationManager.Instance.SetLanguage("tr");
+        }
         
-        ApplySettings();
+        languageButtonText.text = currentLang == "tr" ? "Language:EN" : "Dil:TR";
     }
 
     private void ApplySettings()
