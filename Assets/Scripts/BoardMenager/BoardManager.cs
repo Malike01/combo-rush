@@ -455,7 +455,7 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
     }
 
 
-   private IEnumerator ProcessMatchesRoutine(List<Coin> allCoinsToDestroy, List<Coin> originalMatches)
+    private IEnumerator ProcessMatchesRoutine(List<Coin> allCoinsToDestroy, List<Coin> originalMatches)
     {
         IsProcessing = true;
 
@@ -464,94 +464,19 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
         List<Coin> mysteryCoins = new List<Coin>();
 
         Coin lastCoin = originalMatches[originalMatches.Count - 1];
-        int spawnX = lastCoin.x;
-        int spawnY = lastCoin.y;
-        Vector3 spawnPos = lastCoin.transform.position;
-        int matchColorIndex = lastCoin.colorIndex;
-        int originalMatchCount = originalMatches.Count;
+        Vector3 spawnPos = DetermineExplosionCenter(allCoinsToDestroy, lastCoin.transform.position, out PowerUpType triggeredPowerUp);
 
-        PowerUpType triggeredPowerUp = PowerUpType.None;
-        foreach (Coin c in originalMatches)
-        {
-            if (c.currentPowerUp != PowerUpType.None)
-            {
-                triggeredPowerUp = c.currentPowerUp;
-                break; 
-            }
-        }
+        CategorizeAndClearCoins(allCoinsToDestroy, originalMatches, flyingCoins, explodingCoins, mysteryCoins);
 
-        for (int i = 0; i < allCoinsToDestroy.Count; i++)
-        {
-            Coin coin = allCoinsToDestroy[i];
-            if (coin != null)
-            {
-                board[coin.x, coin.y] = null;
-                coin.transform.SetParent(null);
-
-                if (coin.isMysteryCoin)
-                {
-                    mysteryCoins.Add(coin);
-                }
-                else if (originalMatches.Contains(coin) && coin.currentPowerUp == PowerUpType.None)
-                {
-                    flyingCoins.Add(coin);
-                }
-                else
-                {
-                    explodingCoins.Add(coin);
-                }
-            }
-        }
-
-        PowerUpManager.Instance.CheckAndSpawnPowerUp(originalMatchCount, spawnX, spawnY, spawnPos, matchColorIndex);
+        PowerUpManager.Instance.CheckAndSpawnPowerUp(originalMatches.Count, lastCoin.x, lastCoin.y, spawnPos, lastCoin.colorIndex);
 
         bool hasExplosion = explodingCoins.Count > 0;
-        
-        for (int i = 0; i < explodingCoins.Count; i++)
+        if (hasExplosion)
         {
-            GameObject expObj = explodingCoins[i].gameObject;
-            
-            if (triggeredPowerUp == PowerUpType.Line)
+            TriggerBoardShakeEffect();
+            foreach (Coin expCoin in explodingCoins)
             {
-                float dist = Vector2.Distance(spawnPos, expObj.transform.position);
-                expObj.transform.DOScale(0f, 0.2f).SetDelay(dist * 0.08f).SetEase(Ease.InBack).OnComplete(() => Destroy(expObj));
-            }
-            else if (triggeredPowerUp == PowerUpType.Bomb)
-            {
-                Vector3 dir = (expObj.transform.position - spawnPos).normalized;
-                expObj.transform.DOMove(expObj.transform.position + (dir * 0.6f), 0.2f).SetEase(Ease.OutQuad);
-                expObj.transform.DOScale(0f, 0.2f).SetEase(Ease.InBack).OnComplete(() => Destroy(expObj));
-            }
-            else if (triggeredPowerUp == PowerUpType.Rainbow)
-            {
-                expObj.transform.DOMove(spawnPos, 0.3f).SetEase(Ease.InBack);
-                expObj.transform.DOScale(0f, 0.3f).SetEase(Ease.InBack).OnComplete(() => Destroy(expObj));
-            }
-            else
-            {
-                expObj.transform.DOScale(expObj.transform.localScale * 1.4f, 0.1f)
-                    .OnComplete(() => {
-                        expObj.transform.DOScale(0f, 0.15f).SetEase(Ease.InBack).OnComplete(() => Destroy(expObj));
-                    });
-            }
-
-            if (ParticleFXManager.Instance != null)
-            {
-                float delay = (triggeredPowerUp == PowerUpType.Line) ? Vector2.Distance(spawnPos, expObj.transform.position) * 0.08f : 0f;
-                DOVirtual.DelayedCall(delay, () => {
-                    ParticleFXManager.Instance.PlayBurst(expObj.transform.position, expObj.GetComponent<SpriteRenderer>().color, 1);
-                });
-            }
-        }
-
-        if (hasExplosion && gridParent != null)
-        {
-            gridParent.DOComplete(); 
-            gridParent.DOShakePosition(0.3f, new Vector3(0.15f, 0.15f, 0f), 20, 90f, false, true);
-
-            if (AudioManager.Instance != null) 
-            {
-                AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, 0.7f, 1.3f); 
+                PowerUpManager.Instance.PlayExplosionFX(expCoin.gameObject, triggeredPowerUp, spawnPos);
             }
         }
 
@@ -560,17 +485,13 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
             StartCoroutine(FlyJellyToUI(flyingCoins[i].gameObject, i * 0.08f));
         }
 
-        if (hasExplosion) yield return new WaitForSeconds(0.35f);
+        if (hasExplosion) yield return new WaitForSeconds(0.5f);
         else if (mysteryCoins.Count == 0) yield return new WaitForSeconds(0.15f);
 
-        for (int i = 0; i < mysteryCoins.Count; i++)
+        foreach (Coin mCoin in mysteryCoins)
         {
-            Coin mCoin = mysteryCoins[i];
-            if (mCoin != null)
-            {
-                Vector3 revealTarget = Vector3.Lerp(mCoin.transform.position, new Vector3(0f, 1.5f, -2f), 0.35f);
-                yield return StartCoroutine(mCoin.RevealMysteryCoinRoutine(revealTarget, 0f));
-            }
+            Vector3 revealTarget = Vector3.Lerp(mCoin.transform.position, new Vector3(0f, 1.5f, -2f), 0.35f);
+            yield return StartCoroutine(mCoin.RevealMysteryCoinRoutine(revealTarget, 0f));
         }
 
         yield return StartCoroutine(CollapseGridRoutine());
@@ -633,6 +554,58 @@ void SpawnJellyAt(int x, int y, Vector3 spawnPos)
                 activeJokerInstance = Instantiate(tickTockJokerPrefab, finalSpawnPos, Quaternion.identity, gridParent);
                 
                 activeJokerInstance.transform.localScale = new Vector3(0.15f, 0.15f, 1f);
+            }
+        }
+    }
+
+    private Vector3 DetermineExplosionCenter(List<Coin> allCoins, Vector3 defaultPos, out PowerUpType type)
+    {
+        type = PowerUpType.None;
+        foreach (Coin c in allCoins)
+        {
+            if (c != null && c.currentPowerUp != PowerUpType.None)
+            {
+                type = c.currentPowerUp;
+                return c.transform.position; 
+            }
+        }
+        return defaultPos; 
+    }
+
+    private void CategorizeAndClearCoins(List<Coin> allCoins, List<Coin> originalMatches, List<Coin> flying, List<Coin> exploding, List<Coin> mystery)
+    {
+        foreach (Coin coin in allCoins)
+        {
+            if (coin == null) continue;
+
+            board[coin.x, coin.y] = null;
+            coin.transform.SetParent(null);
+
+            if (coin.isMysteryCoin)
+            {
+                mystery.Add(coin);
+            }
+            else if (originalMatches.Contains(coin) && coin.currentPowerUp == PowerUpType.None)
+            {
+                flying.Add(coin); 
+            }
+            else
+            {
+                exploding.Add(coin); 
+            }
+        }
+    }
+
+    private void TriggerBoardShakeEffect()
+    {
+        if (gridParent != null)
+        {
+            gridParent.DOComplete();
+            gridParent.DOShakePosition(0.3f, new Vector3(0.15f, 0.15f, 0f), 20, 90f, false, true);
+
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.jellyPopSound, 0.7f, 1.3f);
             }
         }
     }

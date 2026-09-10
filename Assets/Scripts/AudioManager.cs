@@ -20,7 +20,7 @@ public class AudioManager : MonoBehaviour
     public AudioClip perfectComboSound;  // 10-14 Perfect Combo
     public AudioClip legendaryComboSound;// 15-19 Legendary Combo
     public AudioClip immortalComboSound; // 20+ Immortal Combo
-
+    public AudioClip levelEndSound;       // Level End Popup Sound (Win or Lose)
 
     [Header("Time Pressure Audio Clips")]
     public AudioClip fastTickClip;    // Fast ticking sound for warning
@@ -28,6 +28,10 @@ public class AudioManager : MonoBehaviour
 
     [Header("Purchase Audio Clips")]
     public AudioClip purchaseSuccessSound;
+
+    [Header("Power-Up Audio Clips")]
+    public AudioClip linePowerUpSound;
+    public AudioClip bombPowerUpSound;
 
     void Awake()
     {

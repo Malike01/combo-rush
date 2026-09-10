@@ -68,13 +68,12 @@ public class ScoreManager : MonoBehaviour
         if (coinCount < 4) return; 
 
         float lengthBonus = 1f;
-        if (coinCount > 3)
+        if (coinCount > 4)
         {
-            lengthBonus += (coinCount - 3) * 0.5f; 
+            lengthBonus += (coinCount - 4) * 0.15f; 
         }
 
-        // Kombo 1 = 1.0x | Kombo 2 = 1.2x | Kombo 3 = 1.4x
-        float comboMultiplier = 1f + ((currentCombo - 1) * 0.2f); 
+        float comboMultiplier = 1f + ((currentCombo - 1) * 0.1f); 
         
         int gainedScore = Mathf.RoundToInt(totalCoinValue * lengthBonus * comboMultiplier); 
 

@@ -13,6 +13,9 @@ public class PowerUpManager : MonoBehaviour
     public Sprite rainbowSprite;
     public static PowerUpManager Instance;
 
+    [Header("VFX Prefabs")]
+    public GameObject bombVFXPrefab;
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -208,5 +211,92 @@ public class PowerUpManager : MonoBehaviour
             }
         }
         return bestColor;
+    }
+
+    public void PlayExplosionFX(GameObject expObj, PowerUpType type, Vector3 spawnPos)
+    {
+        Sequence popSeq = DOTween.Sequence();
+        float dist = Vector2.Distance(spawnPos, expObj.transform.position);
+        float delay = dist * 0.025f;
+
+        switch (type)
+        {
+            case PowerUpType.Line:
+                bool isHorizontal = Mathf.Abs(expObj.transform.position.y - spawnPos.y) < 0.1f;
+                
+                popSeq.AppendInterval(delay);
+                popSeq.Append(expObj.transform.DOScale(new Vector3(0.6f, 0.6f, 1f), 0.08f).SetEase(Ease.InQuad));
+
+                SpriteRenderer sr = expObj.GetComponent<SpriteRenderer>();
+                if (sr != null) popSeq.Insert(delay + 0.05f, sr.DOColor(Color.white, 0.05f));
+
+                if (AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlaySFX(AudioManager.Instance.linePowerUpSound, 1.0f, 1.0f);
+                }
+
+                if (isHorizontal)
+                {
+                    float pushDirX = expObj.transform.position.x > spawnPos.x ? 1.5f : -1.5f;
+                    popSeq.Append(expObj.transform.DOScale(new Vector3(4.0f, 0.1f, 1f), 0.15f).SetEase(Ease.OutExpo));
+                    popSeq.Join(expObj.transform.DOMoveX(expObj.transform.position.x + pushDirX, 0.15f).SetEase(Ease.OutExpo));
+                }
+                else
+                {
+                    float pushDirY = expObj.transform.position.y > spawnPos.y ? 1.5f : -1.5f;
+                    popSeq.Append(expObj.transform.DOScale(new Vector3(0.1f, 4.0f, 1f), 0.15f).SetEase(Ease.OutExpo));
+                    popSeq.Join(expObj.transform.DOMoveY(expObj.transform.position.y + pushDirY, 0.15f).SetEase(Ease.OutExpo));
+                }
+                popSeq.Append(expObj.transform.DOScale(0f, 0.1f).SetEase(Ease.InExpo));
+                break;
+
+            case PowerUpType.Bomb:
+                if (AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlaySFX(AudioManager.Instance.bombPowerUpSound, 1.0f, 1.0f);
+                }
+                if (bombVFXPrefab != null)
+                {
+                    GameObject vfx = Instantiate(bombVFXPrefab, spawnPos, Quaternion.identity);
+                    Destroy(vfx, 1f); 
+                }
+                Vector3 dir = (expObj.transform.position - spawnPos).normalized;
+                if (dir == Vector3.zero) dir = Vector3.up;
+
+                popSeq.AppendInterval(delay);
+
+                SpriteRenderer srBomb = expObj.GetComponent<SpriteRenderer>();
+                if (srBomb != null) 
+                {
+                    popSeq.Insert(delay, srBomb.DOColor(new Color(1f, 0.85f, 0.1f), 0.12f)); 
+                }
+                popSeq.Append(expObj.transform.DOScale(new Vector3(1.3f, 1.3f, 1f), 0.12f).SetEase(Ease.OutQuad));
+
+                popSeq.Append(expObj.transform.DOMove(expObj.transform.position + (dir * 1.2f), 0.25f).SetEase(Ease.OutQuint));
+                popSeq.Join(expObj.transform.DORotate(new Vector3(0, 0, Random.Range(-200f, 200f)), 0.25f, RotateMode.Fast)); // Havada takla
+                popSeq.Join(expObj.transform.DOScale(0f, 0.2f).SetEase(Ease.InSine));
+                break;
+
+            case PowerUpType.Rainbow:
+                popSeq.Append(expObj.transform.DOMove(spawnPos, 0.25f).SetEase(Ease.InCubic));
+                popSeq.Join(expObj.transform.DORotate(new Vector3(0, 0, 360f), 0.25f, RotateMode.FastBeyond360));
+                popSeq.Join(expObj.transform.DOScale(0f, 0.25f).SetEase(Ease.InBack));
+                break;
+
+            default:
+                popSeq.Append(expObj.transform.DOScale(1.3f, 0.08f).SetEase(Ease.OutQuad));
+                popSeq.Append(expObj.transform.DOScale(0f, 0.12f).SetEase(Ease.InBack));
+                break;
+        }
+
+        popSeq.OnComplete(() => Destroy(expObj));
+
+        if (ParticleFXManager.Instance != null)
+        {
+            float partDelay = (type == PowerUpType.Line) ? dist * 0.05f : 0.1f;
+            DOVirtual.DelayedCall(partDelay, () => {
+                ParticleFXManager.Instance.PlayBurst(expObj.transform.position, expObj.GetComponent<SpriteRenderer>().color, 1);
+            });
+        }
     }
 }
